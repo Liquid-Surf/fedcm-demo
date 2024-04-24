@@ -5,6 +5,7 @@
     "packages/*"
   ],
   "scripts": {
+    "start": "lerna run start",
     "test": "lerna run test",
     "build": "lerna run build",
     "lint": "lerna run lint",
@@ -19,8 +20,9 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
     "eslint-plugin-react": "^7.33.2",
-    "lerna": "^7.2.0",
+    "lerna": "^7.4.2",
     "prettier": "3.0.3",
     "typescript": "^5.2.2"
-  }
+  },
+  "dependencies": {}
 }
