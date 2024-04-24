@@ -1,0 +1,17 @@
+{
+  "name": "Simple Solid RP",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "bun src/server.js",
+    "build": "bun build src/solid.js --outdir public/"
+  },
+  "dependencies": {
+    "@inrupt/solid-client": "^1.30.2",
+    "@inrupt/solid-client-authn-browser": "^1.17.5",
+    "@inrupt/solid-client-authn-core": "^2.1.0",
+    "@inrupt/vocab-common-rdf": "^1.0.5",
+    "express": "^4.18.2"
+  }
+}

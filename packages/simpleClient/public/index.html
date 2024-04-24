@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/solid.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simple Solid App</title>
+  <script type="module" src="/solid.js"></script>
+</head>
+
+<body>
+  <h1> 1. Solid-oidc FedCM Demo </h1>
+  <input id="cssurl" />
+  <h2> 1. DCR </h2>
+  <input id="clientid" />
+  <button id="dcr">fetch client id using DCR</button>
+  <h2> 2. Login </h2>
+  <p>Make sure your logged with your<a id="accountlink">css account</a></p>
+  <button id="startFedcmLogin">fedcm login</button>
+  <div id="loginstatus" ></div>
+  <h2>token</h2>
+  <input id="token" />
+  <h2> 3. Fetch a protected resource </h2>
+  <input id="target" />
+  <button id="fetch">Fetch Resource</button>
+  <h2>Response</h2>
+  <div id="response" ></div>
+
+  <script type="module">
+    import { extractWebID, fetchRessource, startFedcmLogin } from './solid.js'
+    let DPOP_KEYS = null;
+    let CSS_URL = 'http://localhost:3000/'
+
+    document.getElementById('target').value = `${CSS_URL}a/profile/`
+    document.getElementById('cssurl').value = `${CSS_URL}`
+    document.getElementById('accountlink').href = `${CSS_URL}.account/`
+
+    const dcr = async () => {
+      const cssUrl = document.getElementById('cssurl').value
+      const resp = await fetch(`${cssUrl}.oidc/reg`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 'redirect_uris': ['http://localhost:6080'] }),
+      })
+      console.log(resp)
+      const resp_json = await resp.json()
+      document.getElementById('clientid').value = resp_json.client_id
+    }
+
+    const callFedcm = async () => {
+      const clientId = document.getElementById('clientid').value
+      const cssUrl = document.getElementById('cssurl').value
+      const { access_token, dpopKey } = await startFedcmLogin(clientId, cssUrl)
+      DPOP_KEYS = dpopKey
+      console.log(access_token, dpopKey)
+      console.log('token', access_token.token)
+      document.getElementById('token').value = access_token.token
+      document.getElementById('loginstatus').innerText = `You are logged in with ${extractWebID(access_token.token)}`
+    }
+
+    const fetchTarget = async () => {
+      const target = document.getElementById('target').value
+      const token = document.getElementById('token').value
+      console.log('token', token)
+      const res = await fetchRessource(target, token, DPOP_KEYS)
+      document.getElementById('response').innerText = res
+      console.log(res)
+    }
+
+    document.getElementById('dcr')
+      .addEventListener('click', async () => await dcr())
+    document.getElementById('startFedcmLogin')
+      .addEventListener('click', async () => await callFedcm())
+    document.getElementById('fetch')
+      .addEventListener('click', async () => await fetchTarget())
+  </script>
+</body>
+
+</html>
