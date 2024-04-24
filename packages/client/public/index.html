@@ -11,16 +11,21 @@
 
 <body>
   <h1> 1. Solid-oidc FedCM Demo </h1>
-  <input id="cssurl" />
+  <p>CSS url:
+    <input id="cssurl" />
+  </p>
   <h2> 1. DCR </h2>
-  <input id="clientid" />
   <button id="dcr">fetch client id using DCR</button>
+  <p> client id:
+  <input id="clientid" />
+  </p>
   <h2> 2. Login </h2>
-  <p>Make sure your logged with your<a id="accountlink">css account</a></p>
+  <p>Make sure your logged with your <a id="accountlink">css account</a></p>
   <button id="startFedcmLogin">fedcm login</button>
   <div id="loginstatus" ></div>
-  <h2>token</h2>
-  <input id="token" />
+  <p>access token:
+    <input id="token" />
+  </p>
   <h2> 3. Fetch a protected resource </h2>
   <input id="target" />
   <button id="fetch">Fetch Resource</button>

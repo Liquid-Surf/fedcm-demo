@@ -19,13 +19,9 @@
       "handler": {
         "@type": "FedcmHttpHandler",
         "baseUrl": { "@id": "urn:solid-server:default:variable:baseUrl" },
-        "accountStore": { "@id": "urn:solid-server:default:AccountStore" },
         "webIdStore": { "@id": "urn:solid-server:default:WebIdStore" },
         "cookieStore": { "@id": "urn:solid-server:default:CookieStore" },      
-        "providerFactory": { "@id": "urn:solid-server:default:IdentityProviderFactory" },
-        "requestParser": { "@id": "urn:solid-server:default:RequestParser" },
-        "clientCredentialsStore": { "@id": "urn:solid-server:default:ClientCredentialsStore" }
-      }
+        "providerFactory": { "@id": "urn:solid-server:default:IdentityProviderFactory" }      }
     }
   ]
 }

@@ -35,14 +35,12 @@ async function get_client_id_secret(authorization: string, webId: string, baseUr
   });
 
   // TODO: why can I remove the token on my account page and still be able to fetch /profile/
-  // TODO: should I remove the token ?
+  // TODO: should I remove the token after?
 
   // These are the identifier and secret of your token.
   // Store the secret somewhere safe as there is no way to request it again from the server!
   // The `resource` value can be used to delete the token at a later point in time.
   const { id, secret, resource } = await response.json();
-  console.log('id, sec')
-  console.log({ id, secret, resource })
   return { id, secret, resource }
 }
 
@@ -65,7 +63,7 @@ async function get_token(id: string, secret: string, dpopHeader: string, baseUrl
       // The header needs to be in base64 encoding.
       authorization: `Basic ${Buffer.from(authString).toString('base64')}`,
       'content-type': 'application/x-www-form-urlencoded',
-      dpop: dpopHeader, // TODO
+      dpop: dpopHeader,
     },
     body: 'grant_type=client_credentials&scope=webid',
   });
@@ -74,7 +72,6 @@ async function get_token(id: string, secret: string, dpopHeader: string, baseUrl
   // The JSON also contains an "expires_in" field in seconds,
   // which you can use to know when you need request a new Access token.
   const resp = await response.json();
-  console.log(resp)
   return resp
 }
 
@@ -89,31 +86,25 @@ export class FedcmHttpHandler extends HttpHandler {
   protected readonly logger = getLoggerFor(this);
 
   private readonly baseUrl: string;
-  private readonly accountStore: AccountStore;
   private readonly cookieStore: CookieStore;
   private readonly webIdStore: WebIdStore;
   private readonly clientCredentialsStore: ClientCredentialsStore;
   private readonly providerFactory: ProviderFactory;
-  private readonly requestParser: RequestParser;
 
   public constructor(
     baseUrl: string,
-    accountStore: AccountStore,
     cookieStore: CookieStore,
     webIdStore: WebIdStore,
     providerFactory: ProviderFactory,
-    requestParser: RequestParser,
     clientCredentialsStore: ClientCredentialsStore
   ) {
     super();
     this.baseUrl = baseUrl.slice(-1) === '/'
       ? baseUrl
       : `${baseUrl}/`; // TODO check if CSS does it automatically     
-    this.accountStore = accountStore
     this.cookieStore = cookieStore
     this.webIdStore = webIdStore
     this.providerFactory = providerFactory
-    this.requestParser = requestParser
     this.clientCredentialsStore = clientCredentialsStore
   }
 
@@ -121,7 +112,7 @@ export class FedcmHttpHandler extends HttpHandler {
 
     if (request.headers['sec-fetch-dest'] !== 'webidentity') {
       response.writeHead(400, { 'Content-Type': 'application/json' });
-      response.end(JSON.stringify({ error: 'Bad Request: Missing or incorrect Sec-Fetch-Dest header'}));
+      response.end(JSON.stringify({ error: 'Bad Request: Missing or incorrect Sec-Fetch-Dest header' }));
       return;
     }
 
@@ -149,8 +140,6 @@ export class FedcmHttpHandler extends HttpHandler {
   private async handleWebIdentity({ request, response }: HttpHandlerInput): Promise<void> {
     // 3.1
     // https://fedidcg.github.io/FedCM/#idp-api-well-known
-
-
 
     const providers = [`${this.baseUrl}.well-known/fedcm/fedcm.json`]
     response.writeHead(200, { 'Content-Type': 'application/json' })
@@ -194,16 +183,9 @@ export class FedcmHttpHandler extends HttpHandler {
     //  2. Match the session cookies with the IDs of the already signed-in accounts.
     //  3. Respond with the list of accounts.
 
-    if (request.headers['sec-fetch-dest'] !== 'webidentity') {
-      response.writeHead(400, { 'Content-Type': 'application/json' });
-      response.end('Bad Request: Missing or incorrect Sec-Fetch-Dest header');
-      return;
-    }
-
     const cookies = parse(request.headers.cookie || '')
 
-    const empty_accounts = { accounts: [] };
-    if (! ('css-account' in cookies)) {
+    if (!('css-account' in cookies)) {
       response.writeHead(400, { 'Content-Type': 'text/plain' });
       response.end(JSON.stringify({ error: "Missing 'css-account' in request's cookies" }));
       return;
@@ -248,13 +230,6 @@ export class FedcmHttpHandler extends HttpHandler {
   private async handleClientMetadataEndpoint({ request, response }: HttpHandlerInput): Promise<void> {
     // 3.4
     // https://fedidcg.github.io/FedCM/#idp-api-client-id-metadata-endpoint
-    
-    // This one is optional
-    if (request.headers['sec-fetch-dest'] !== 'webidentity') {
-      response.writeHead(400, { 'Content-Type': 'application/json' });
-      response.end('Bad Request: Missing or incorrect Sec-Fetch-Dest header');
-      return;
-    }
 
     const metadata = {
       privacy_policy_url: '...',
@@ -270,10 +245,7 @@ export class FedcmHttpHandler extends HttpHandler {
 
     // Upon receiving the request, the server should:
     // 1. Verify that the request contains a Sec-Fetch-Dest: webidentity HTTP header.
-    // 2. TODO Match the Origin header against the RP origin determine by the client_id. Reject if they don't match.
-        // We do not use client id, should we force the client to call /.oidc/reg first ?
-        // Then we need to check here if the given client id matches with the
-        // TODO Need to make a DCR in the client, and here verify the client_id
+    // 2. Match the Origin header against the RP origin determine by the client_id. Reject if they don't match.
     // 3. Match account_id against the ID of the already signed-in account. Reject if they don't match.
     // 4. Respond with a token. If the request is rejected, respond with an error response.
     // How the token is issued is up to the IdP, but in general, it's signed with information 
@@ -282,6 +254,14 @@ export class FedcmHttpHandler extends HttpHandler {
     const r = await readableToString(request)
     const client_id = new URLSearchParams(r).get('client_id') || ''
     const nonce = new URLSearchParams(r).get('nonce') || undefined
+
+    if (!client_id) {
+      const error_msg = 'client_id missing from the request\'s body.'
+      this.logger.info(error_msg)
+      response.writeHead(400, { 'Content-Type': 'application/json' })
+      response.end(JSON.stringify({ 'error': error_msg }))
+      return
+    }
 
     if (!nonce) {
       const error_msg = 'Nonce missing. To make FedCM work with Solid-OIDC, you need to pass the DPoP Header through the nonce value in the request.'
@@ -307,8 +287,7 @@ export class FedcmHttpHandler extends HttpHandler {
     }
 
     const cssAccountCookie = cookies['css-account']
-    this.logger.info(">>>>>> COOOKIE ")
-    this.logger.info(cssAccountCookie)
+
     const accountId = await this.cookieStore.get(cssAccountCookie)
     const reqAccountId = new URLSearchParams(r).get('account_id')
 
@@ -328,7 +307,7 @@ export class FedcmHttpHandler extends HttpHandler {
       return
     }
 
-    if ( accountId !== reqAccountId) {
+    if (accountId !== reqAccountId) {
       const error_msg = 'The account_id from the request\'s body doesn\'t match the account_id binded to the session cookie.'
       this.logger.info(error_msg)
       response.writeHead(400, { 'Content-Type': 'application/json' })
@@ -340,7 +319,7 @@ export class FedcmHttpHandler extends HttpHandler {
     const provider = await this.providerFactory.getProvider()
     const registered_client = await provider.Client.find(client_id)
 
-    if ( !registered_client || registered_client.redirectUris?.[0] !== request.headers.origin) {
+    if (!registered_client || registered_client.redirectUris?.[0] !== request.headers.origin) {
       const error_msg = 'The origin of the request doesn\'t match the redirect uri given during client registration.'
       this.logger.info(error_msg)
       response.writeHead(400, { 'Content-Type': 'application/json' })
@@ -351,19 +330,11 @@ export class FedcmHttpHandler extends HttpHandler {
     const accountLinks = await this.webIdStore.findLinks(accountId)
     const webId = accountLinks[0].webId // TODO: handle mutiple webId
 
-    const client = await this.clientCredentialsStore.findByAccount(accountId)
 
     // TODO re-use previous token instead of creating a new
     const { id, secret, resource } = await get_client_id_secret(cssAccountCookie, webId, this.baseUrl)
     const { access_token: accessToken } = await get_token(id, secret, dpopHeader, this.baseUrl)
 
-
-    this.logger.info(">>>>>> accoutn id, webid , id , secret, access token")
-    this.logger.info(accountId)
-    this.logger.info(webId)
-    this.logger.info(id)
-    this.logger.info(secret)
-    this.logger.info(JSON.stringify(accessToken))
 
     response.writeHead(200, { 'Content-Type': 'application/json' })
     response.end(JSON.stringify({ 'token': accessToken }))
@@ -373,7 +344,7 @@ export class FedcmHttpHandler extends HttpHandler {
   private async handleDisconnect({ request, response }: HttpHandlerInput): Promise<void> {
     // 3.6
     // https://fedidcg.github.io/FedCM/#idp-api-disconnect-endpoint
-    
+
 
     // TODO:
     // check POST
@@ -393,7 +364,7 @@ export class FedcmHttpHandler extends HttpHandler {
       terms_of_service_url: '...'
     };
     response.writeHead(501, { 'Content-Type': 'application/json' });
-    response.end(JSON.stringify({error: "TODO"}));
+    response.end(JSON.stringify({ error: "TODO" }));
   }
 
 
