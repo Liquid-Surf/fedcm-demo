@@ -37,5 +37,18 @@
     "css:config/util/variables/default.json",
 
     "fedcm:config/http/handler/default-with-fedcm.json"
+  ],
+  "@graph": [
+    {
+      "@id": "urn:fedcm:default:fedcmLoginTemplateOverride",
+      "@type": "Override",
+      "overrideInstance": { "@id": "urn:solid-server:default:PasswordLoginHtml" },
+      "overrideParameters": {
+        "@type" : "HtmlViewEntry",
+        "comment": "Should we use relative path bellow ? aliases like @fedcm doesn't seems to work",
+        "filePath": "./templates/identity/password/login.html.ejs",
+        "route": { "@id": "urn:solid-server:default:LoginPasswordRoute" }
+      }
+    }
   ]
 }
