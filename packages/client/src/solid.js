@@ -40,8 +40,9 @@ export async function startFedcmLogin(clientId, cssUrl) {
   const tokenUrl = `${cssUrl}.oidc/token`;
   const dpopHeader = await createDpopHeader(tokenUrl, 'POST', dpopKey);
 
+  
 
-  const identity = {
+  const identity_default = {
     "providers": [
       {
         "configURL": `${cssUrl}.well-known/fedcm/fedcm.json`,
@@ -52,12 +53,33 @@ export async function startFedcmLogin(clientId, cssUrl) {
     ],
     "mediation": "optional"
   }
-  console.log('requesting navigator\'s API')
-  const access_token = await navigator.credentials.get({
-    identity: identity
-  })
-  return { access_token, dpopKey }
 
+  const identity_registered = {
+    "providers": [
+      {
+        "configURL": `any`,
+        // "clientId": `${clientId}`,
+        "clientId": `https://localhost:6080/clientidempty`,
+        // "nonce": `${dpopHeader}`,
+        "nonce": `${dpopHeader}`,
+        "registered": true,
+        "grant type": "webid"
+      }
+    ]
+  }
+  console.log('requesting navigator\'s API..')
+  try {
+    const access_token = await navigator.credentials.get({
+      identity: identity_registered
+      // identity: identity_default
+    })    
+    console.log('access_token', access_token)
+    return { access_token, dpopKey }
+  } catch (error) {
+    console.log("Client Error calling the navigator api: ", error);
+    return 
+
+  }
 }
 
 

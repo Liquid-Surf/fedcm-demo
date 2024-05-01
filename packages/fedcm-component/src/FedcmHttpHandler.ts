@@ -15,65 +15,8 @@ import { readableToString } from '@solid/community-server';
 
 
 
-async function get_client_id_secret(authorization: string, webId: string, baseUrl: string) {
-
-  // Now that we are logged in, we need to request the updated controls from the server.
-  // These will now have more values than in the previous example.
-  const indexResponse = await fetch(`${baseUrl}.account/`, {
-    headers: { authorization: `CSS-Account-Token ${authorization}` }
-  });
-  let { controls } = await indexResponse.json();
-
-  // Here we request the server to generate a token on our account
-  const response = await fetch(controls.account.clientCredentials, {
-    method: 'POST',
-    headers: { authorization: `CSS-Account-Token ${authorization}`, 'content-type': 'application/json' },
-    // The name field will be used when generating the ID of your token.
-    // The WebID field determines which WebID you will identify as when using the token.
-    // Only WebIDs linked to your account can be used.
-    body: JSON.stringify({ name: 'my-token', webId: webId }),
-  });
-
-  // TODO: why can I remove the token on my account page and still be able to fetch /profile/
-  // TODO: should I remove the token after?
-
-  // These are the identifier and secret of your token.
-  // Store the secret somewhere safe as there is no way to request it again from the server!
-  // The `resource` value can be used to delete the token at a later point in time.
-  const { id, secret, resource } = await response.json();
-  return { id, secret, resource }
-}
 
 
-async function get_token(id: string, secret: string, dpopHeader: string, baseUrl: string) {
-  // A key pair is needed for encryption.
-  // This function from `solid-client-authn` generates such a pair for you.
-  const dpopKey = await generateDpopKeyPair();
-
-  // These are the ID and secret generated in the previous step.
-  // Both the ID and the secret need to be form-encoded.
-  const authString = `${encodeURIComponent(id)}:${encodeURIComponent(secret)}`;
-  // This URL can be found by looking at the "token_endpoint" field at
-  // http://localhost:3000/.well-known/openid-configuration
-  // if your server is hosted at http://localhost:3000/.
-  const tokenUrl = `${baseUrl}.oidc/token`;
-  const response = await fetch(tokenUrl, {
-    method: 'POST',
-    headers: {
-      // The header needs to be in base64 encoding.
-      authorization: `Basic ${Buffer.from(authString).toString('base64')}`,
-      'content-type': 'application/x-www-form-urlencoded',
-      dpop: dpopHeader,
-    },
-    body: 'grant_type=client_credentials&scope=webid',
-  });
-
-  // This is the Access token that will be used to do an authenticated request to the server.
-  // The JSON also contains an "expires_in" field in seconds,
-  // which you can use to know when you need request a new Access token.
-  const resp = await response.json();
-  return resp
-}
 
 
 
@@ -88,7 +31,6 @@ export class FedcmHttpHandler extends HttpHandler {
   private readonly baseUrl: string;
   private readonly cookieStore: CookieStore;
   private readonly webIdStore: WebIdStore;
-  private readonly clientCredentialsStore: ClientCredentialsStore;
   private readonly providerFactory: ProviderFactory;
 
   public constructor(
@@ -96,7 +38,6 @@ export class FedcmHttpHandler extends HttpHandler {
     cookieStore: CookieStore,
     webIdStore: WebIdStore,
     providerFactory: ProviderFactory,
-    clientCredentialsStore: ClientCredentialsStore
   ) {
     super();
     this.baseUrl = baseUrl.slice(-1) === '/'
@@ -105,8 +46,81 @@ export class FedcmHttpHandler extends HttpHandler {
     this.cookieStore = cookieStore
     this.webIdStore = webIdStore
     this.providerFactory = providerFactory
-    this.clientCredentialsStore = clientCredentialsStore
   }
+
+  private async get_token(id: string, secret: string, dpopHeader: string, baseUrl: string) {
+    // A key pair is needed for encryption.
+    // This function from `solid-client-authn` generates such a pair for you.
+    const dpopKey = await generateDpopKeyPair();
+
+    // These are the ID and secret generated in the previous step.
+    // Both the ID and the secret need to be form-encoded.
+    const authString = `${encodeURIComponent(id)}:${encodeURIComponent(secret)}`;
+    // This URL can be found by looking at the "token_endpoint" field at
+    // http://localhost:3000/.well-known/openid-configuration
+    // if your server is hosted at http://localhost:3000/.
+    const tokenUrl = `${baseUrl}.oidc/token`;
+    try {
+        
+      const response = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: {
+          // The header needs to be in base64 encoding.
+          authorization: `Basic ${Buffer.from(authString).toString('base64')}`,
+          'content-type': 'application/x-www-form-urlencoded',
+          dpop: dpopHeader,
+        },
+        body: 'grant_type=client_credentials&scope=webid',
+      });
+      const resp = await response.json();
+      return resp
+    } catch (error) {
+      this.logger.info(`Error in get_token: ${error}`)
+      return 
+    }
+
+  // This is the Access token that will be used to do an authenticated request to the server.
+  // The JSON also contains an "expires_in" field in seconds,
+  // which you can use to know when you need request a new Access token.
+
+}
+
+
+private async get_client_id_secret(authorization: string, webId: string, baseUrl: string) {
+
+  // Now that we are logged in, we need to request the updated controls from the server.
+  // These will now have more values than in the previous example.
+  const indexResponse = await fetch(`${baseUrl}.account/`, {
+    headers: { authorization: `CSS-Account-Token ${authorization}` }
+  });
+  let { controls }: any = await indexResponse.json();
+  try {
+    
+    // Here we request the server to generate a token on our account
+    const response = await fetch(controls.account.clientCredentials, {
+      method: 'POST',
+      headers: { authorization: `CSS-Account-Token ${authorization}`, 'content-type': 'application/json' },
+      // The name field will be used when generating the ID of your token.
+      // The WebID field determines which WebID you will identify as when using the token.
+      // Only WebIDs linked to your account can be used.
+      body: JSON.stringify({ name: 'my-token', webId: webId }),
+    });
+
+    // TODO: why can I remove the token on my account page and still be able to fetch /profile/
+    // TODO: should I remove the token after?
+
+    // These are the identifier and secret of your token.
+    // Store the secret somewhere safe as there is no way to request it again from the server!
+    // The `resource` value can be used to delete the token at a later point in time.
+    const { id, secret, resource } : any = await response.json();
+    return { id, secret, resource }
+
+  } catch (error) {
+    this.logger.info(`Error in get_token: ${error}`)
+    return 
+  }
+
+}
 
   public async handle({ request, response }: HttpHandlerInput): Promise<void> {
 
@@ -122,7 +136,7 @@ export class FedcmHttpHandler extends HttpHandler {
       await this.handleFedcmJSON({ request, response });
     } else if (request.url?.startsWith('/.well-known/fedcm/accounts_endpoint')) {
       await this.handleAccountsEnpoint({ request, response });
-    } else if (request.url?.startsWith('/.wxell-known/fedcm/client_metadata_endpoint')) {
+    } else if (request.url?.startsWith('/.well-known/fedcm/client_metadata_endpoint')) {
       await this.handleClientMetadataEndpoint({ request, response });
     } else if (request.url?.startsWith('/.well-known/fedcm/token')) {
       await this.handleToken({ request, response });
@@ -317,23 +331,23 @@ export class FedcmHttpHandler extends HttpHandler {
 
 
     const provider = await this.providerFactory.getProvider()
-    const registered_client = await provider.Client.find(client_id)
+    // const registered_client = await provider.Client.find(client_id) // TODO handle case where client_id not found
 
-    if (!registered_client || registered_client.redirectUris?.[0] !== request.headers.origin) {
-      const error_msg = 'The origin of the request doesn\'t match the redirect uri given during client registration.'
-      this.logger.info(error_msg)
-      response.writeHead(400, { 'Content-Type': 'application/json' })
-      response.end(JSON.stringify({ 'error': error_msg }))
-      return
-    }
+    // if (!registered_client || registered_client.redirectUris?.[0] !== request.headers.origin) {
+    //   const error_msg = 'The origin of the request doesn\'t match the redirect uri given during client registration.'
+    //   this.logger.info(error_msg)
+    //   response.writeHead(400, { 'Content-Type': 'application/json' })
+    //   response.end(JSON.stringify({ 'error': error_msg }))
+    //   return
+    // }
 
     const accountLinks = await this.webIdStore.findLinks(accountId)
     const webId = accountLinks[0].webId // TODO: handle mutiple webId
 
 
     // TODO re-use previous token instead of creating a new
-    const { id, secret, resource } = await get_client_id_secret(cssAccountCookie, webId, this.baseUrl)
-    const { access_token: accessToken } = await get_token(id, secret, dpopHeader, this.baseUrl)
+    const { id, secret, resource }: any = await this.get_client_id_secret(cssAccountCookie, webId, this.baseUrl)
+    const { access_token: accessToken } : any = await this.get_token(id, secret, dpopHeader, this.baseUrl)
 
 
     response.writeHead(200, { 'Content-Type': 'application/json' })
