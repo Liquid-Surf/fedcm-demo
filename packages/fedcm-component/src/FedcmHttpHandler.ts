@@ -103,6 +103,21 @@ private async get_client_id_secret(authorization: string, webId: string) {
   }
 
 }
+private async deleteToken(tokenId: string, authorization: string) {
+    const indexResponse = await fetch(`${this.baseUrl}.account/`, {
+      headers: { authorization: `CSS-Account-Token ${authorization}` }
+    });
+    let { controls }: any = await indexResponse.json();
+    const listOfTokensResp = await fetch(controls.account.clientCredentials, {
+      headers: { authorization: `CSS-Account-Token ${authorization}` }
+    })
+    const listOfTokensJson: any = await listOfTokensResp.json()
+    const tokenUrl = listOfTokensJson.clientCredentials[tokenId]
+    const delteTokenResp = await fetch(tokenUrl, {
+      method: 'DELETE',
+      headers: { authorization: `CSS-Account-Token ${authorization}`}
+    });
+  }
 
   public async handle({ request, response }: HttpHandlerInput): Promise<void> {
 
@@ -321,6 +336,9 @@ private async get_client_id_secret(authorization: string, webId: string) {
     // TODO re-use previous token instead of creating a new
     const { tokenId, secret }: any = await this.get_client_id_secret(cssAccountCookie, webId)
     const { access_token: accessToken } : any = await this.get_token(tokenId, secret, dpopHeader)
+    // seems that we can safely delete the tokenId once we have the access token
+    // then we don't poluate the account with an incremental number of access tokens
+    await this.deleteToken(tokenId, cssAccountCookie)
 
     response.writeHead(200, { 'Content-Type': 'application/json' })
     response.end(JSON.stringify({ 'token': accessToken }))
@@ -355,5 +373,3 @@ private async get_client_id_secret(authorization: string, webId: string) {
 
 
 }
-
-
