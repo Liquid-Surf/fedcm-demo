@@ -34,33 +34,17 @@ export function extractWebID(jwt) {
 
 
 
-export async function startFedcmLogin(clientId, cssUrl) {
+export async function startFedcmLogin(cssUrl) {
   console.log('startFedcmLogin')
   const dpopKey = await generateDpopKeyPair();
   const tokenUrl = `${cssUrl}.oidc/token`;
   const dpopHeader = await createDpopHeader(tokenUrl, 'POST', dpopKey);
 
-  
-
-  const identity_default = {
-    "providers": [
-      {
-        "configURL": `${cssUrl}.well-known/fedcm/fedcm.json`,
-        "clientId": `${clientId}`,
-        "nonce": `${dpopHeader}`,
-        "grant type": "webid"
-      }
-    ],
-    "mediation": "optional"
-  }
-
   const identity_registered = {
     "providers": [
       {
         "configURL": `any`,
-        // "clientId": `${clientId}`,
-        "clientId": `https://localhost:6080/clientidempty`,
-        // "nonce": `${dpopHeader}`,
+        "clientId": `https://localhost:6080/clientid`,
         "nonce": `${dpopHeader}`,
         "registered": true,
         "grant type": "webid"
@@ -71,7 +55,6 @@ export async function startFedcmLogin(clientId, cssUrl) {
   try {
     const access_token = await navigator.credentials.get({
       identity: identity_registered
-      // identity: identity_default
     })    
     console.log('access_token', access_token)
     return { access_token, dpopKey }

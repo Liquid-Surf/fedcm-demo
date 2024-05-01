@@ -1,25 +1,11 @@
-import type { ProviderFactory } from '@solid/community-server';
-import { AccountStore } from '@solid/community-server';
-import { BaseClientCredentialsStore, ClientCredentialsStore, RequestParser } from '@solid/community-server';
 import { CookieStore } from '@solid/community-server';
 import { HttpHandler } from '@solid/community-server';
 import type { HttpHandlerInput } from '@solid/community-server';
 import { WebIdStore } from '@solid/community-server';
-import { createDpopHeader, generateDpopKeyPair } from '@inrupt/solid-client-authn-core';
+import { generateDpopKeyPair } from '@inrupt/solid-client-authn-core';
 import { getLoggerFor } from '@solid/community-server';
 import { parse } from 'cookie'
 import { readableToString } from '@solid/community-server';
-
-
-
-
-
-
-
-
-
-
-
 
 
 /**
@@ -31,13 +17,11 @@ export class FedcmHttpHandler extends HttpHandler {
   private readonly baseUrl: string;
   private readonly cookieStore: CookieStore;
   private readonly webIdStore: WebIdStore;
-  private readonly providerFactory: ProviderFactory;
 
   public constructor(
     baseUrl: string,
     cookieStore: CookieStore,
     webIdStore: WebIdStore,
-    providerFactory: ProviderFactory,
   ) {
     super();
     this.baseUrl = baseUrl.slice(-1) === '/'
@@ -45,10 +29,9 @@ export class FedcmHttpHandler extends HttpHandler {
       : `${baseUrl}/`; // TODO check if CSS does it automatically     
     this.cookieStore = cookieStore
     this.webIdStore = webIdStore
-    this.providerFactory = providerFactory
   }
 
-  private async get_token(id: string, secret: string, dpopHeader: string, baseUrl: string) {
+  private async get_token(id: string, secret: string, dpopHeader: string) {
     // A key pair is needed for encryption.
     // This function from `solid-client-authn` generates such a pair for you.
     const dpopKey = await generateDpopKeyPair();
@@ -59,7 +42,7 @@ export class FedcmHttpHandler extends HttpHandler {
     // This URL can be found by looking at the "token_endpoint" field at
     // http://localhost:3000/.well-known/openid-configuration
     // if your server is hosted at http://localhost:3000/.
-    const tokenUrl = `${baseUrl}.oidc/token`;
+    const tokenUrl = `${this.baseUrl}.oidc/token`;
     try {
         
       const response = await fetch(tokenUrl, {
@@ -86,16 +69,17 @@ export class FedcmHttpHandler extends HttpHandler {
 }
 
 
-private async get_client_id_secret(authorization: string, webId: string, baseUrl: string) {
+private async get_client_id_secret(authorization: string, webId: string) {
 
   // Now that we are logged in, we need to request the updated controls from the server.
   // These will now have more values than in the previous example.
-  const indexResponse = await fetch(`${baseUrl}.account/`, {
+  const indexResponse = await fetch(`${this.baseUrl}.account/`, {
     headers: { authorization: `CSS-Account-Token ${authorization}` }
   });
   let { controls }: any = await indexResponse.json();
   try {
-    
+
+
     // Here we request the server to generate a token on our account
     const response = await fetch(controls.account.clientCredentials, {
       method: 'POST',
@@ -106,14 +90,12 @@ private async get_client_id_secret(authorization: string, webId: string, baseUrl
       body: JSON.stringify({ name: 'my-token', webId: webId }),
     });
 
-    // TODO: why can I remove the token on my account page and still be able to fetch /profile/
-    // TODO: should I remove the token after?
 
     // These are the identifier and secret of your token.
     // Store the secret somewhere safe as there is no way to request it again from the server!
     // The `resource` value can be used to delete the token at a later point in time.
-    const { id, secret, resource } : any = await response.json();
-    return { id, secret, resource }
+    const { id, secret } : any = await response.json();
+    return { id, secret }
 
   } catch (error) {
     this.logger.info(`Error in get_token: ${error}`)
@@ -330,25 +312,15 @@ private async get_client_id_secret(authorization: string, webId: string, baseUrl
     }
 
 
-    const provider = await this.providerFactory.getProvider()
-    // const registered_client = await provider.Client.find(client_id) // TODO handle case where client_id not found
 
-    // if (!registered_client || registered_client.redirectUris?.[0] !== request.headers.origin) {
-    //   const error_msg = 'The origin of the request doesn\'t match the redirect uri given during client registration.'
-    //   this.logger.info(error_msg)
-    //   response.writeHead(400, { 'Content-Type': 'application/json' })
-    //   response.end(JSON.stringify({ 'error': error_msg }))
-    //   return
-    // }
 
     const accountLinks = await this.webIdStore.findLinks(accountId)
     const webId = accountLinks[0].webId // TODO: handle mutiple webId
 
 
     // TODO re-use previous token instead of creating a new
-    const { id, secret, resource }: any = await this.get_client_id_secret(cssAccountCookie, webId, this.baseUrl)
-    const { access_token: accessToken } : any = await this.get_token(id, secret, dpopHeader, this.baseUrl)
-
+    const { tokenId, secret }: any = await this.get_client_id_secret(cssAccountCookie, webId)
+    const { access_token: accessToken } : any = await this.get_token(tokenId, secret, dpopHeader)
 
     response.writeHead(200, { 'Content-Type': 'application/json' })
     response.end(JSON.stringify({ 'token': accessToken }))
@@ -383,6 +355,5 @@ private async get_client_id_secret(authorization: string, webId: string, baseUrl
 
 
 }
-
 
 

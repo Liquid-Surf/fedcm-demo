@@ -8,7 +8,7 @@ app.use(express.static('public'));
 
 
 const clientId = {
-  "client_id": `http://localhost:${port}/clientid`,
+  "client_id": `123`,
   "client_name": "test RP",
   "redirect_uris": [
     `http://localhost:${port}/`

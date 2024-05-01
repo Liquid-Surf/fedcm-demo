@@ -14,11 +14,6 @@
   <p>CSS url:
     <input id="cssurl" />
   </p>
-  <h2> 1. DCR </h2>
-  <button id="dcr">fetch client id using DCR</button>
-  <p> client id:
-  <input id="clientid" />
-  </p>
   <h2> 2. Login </h2>
   <p>Make sure your logged with your <a id="accountlink">css account</a></p>
   <button id="startFedcmLogin">fedcm login</button>
@@ -41,22 +36,10 @@
     document.getElementById('cssurl').value     = `${CSS_URL}`
     document.getElementById('accountlink').href = `${CSS_URL}.account/`
 
-    const dcr = async () => {
-      const cssUrl = document.getElementById('cssurl').value
-      const resp = await fetch(`${cssUrl}.oidc/reg`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 'redirect_uris': ['http://localhost:6080'] }),
-      })
-      console.log(resp)
-      const resp_json = await resp.json()
-      document.getElementById('clientid').value = resp_json.client_id
-    }
 
     const callFedcm = async () => {
-      const clientId = document.getElementById('clientid').value
       const cssUrl = document.getElementById('cssurl').value
-      const { access_token, dpopKey } = await startFedcmLogin(clientId, cssUrl)
+      const { access_token, dpopKey } = await startFedcmLogin(cssUrl)
       DPOP_KEYS = dpopKey
       console.log(access_token, dpopKey)
       console.log('token', access_token.token)
@@ -73,8 +56,7 @@
       console.log(res)
     }
 
-    document.getElementById('dcr')
-      .addEventListener('click', async () => await dcr())
+
     document.getElementById('startFedcmLogin')
       .addEventListener('click', async () => await callFedcm())
     document.getElementById('fetch')
