@@ -95,7 +95,7 @@ private async get_client_id_secret(authorization: string, webId: string) {
     // Store the secret somewhere safe as there is no way to request it again from the server!
     // The `resource` value can be used to delete the token at a later point in time.
     const { id, secret } : any = await response.json();
-    return { id, secret }
+    return { tokenId: id, secret: secret }
 
   } catch (error) {
     this.logger.info(`Error in get_token: ${error}`)
