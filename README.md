@@ -24,14 +24,15 @@ First you need chrome canary with the `FedCM Authz` and `FedCM with IdP Registra
 # status
 
 Currently the demo as been tested on debian with chromium  125.0.6422.0 (Developer Build).
-Only the "classic" FedCM works, and the IdP registration needs to be implemted.
+Both the "classic" FedCM and the IdP registration works [#240](https://github.com/fedidcg/FedCM/issues/240#issuecomment-2004650817)
 This demo doesn't pretend to be secure nor fully spec-compliant, but rather see how FedCM could improve Solid's UX.
 
 # TODO
 
  - [X] Make FedCM work with Solid-OIDC
- - [ ] Add the IdP registration feature
-   - [ ] Edit the CSS component to register to the user agent during sign in ( or sign up ? )
-   - [ ] Modify the client to get register IdPs from the user agent
+ - [X] Add the IdP registration feature
+   - [X] Edit the CSS component to register to the user agent during sign in ( or sign up ? )
+   - [X] Modify the client to get register IdPs from the user agent
+   - [ ] Match the Origin header against the RP origin determine by the client_id. Reject if they don't match. ( [3.5 - 2](https://fedidcg.github.io/FedCM/#idp-api-id-assertion-endpoint) )
  - [ ] create npm package and publishing script
  - [ ] add it to https://pod.liquid.surf
