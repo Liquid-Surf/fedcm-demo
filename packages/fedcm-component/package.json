@@ -17,6 +17,7 @@
   },
   "scripts": {
     "start": "community-solid-server -c fedcm-file.json -f data -m . -p 3000",
+    "start:debug": "npm run build && community-solid-server -c fedcm-file.json -f data -m . -p 3000",
     "build": "npm run build:ts && npm run build:components",
     "build:components": "componentsjs-generator -s src -c dist/components -i .componentsignore -r fedcm",
     "build:ts": "tsc",
