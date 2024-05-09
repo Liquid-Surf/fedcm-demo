@@ -227,7 +227,7 @@ private async deleteToken(tokenId: string, authorization: string) {
           // email: 'a@a.a', // TODO get user's email ?
           email: webId, // giving the webId instead of an email
           picture: 'https://doodleipsum.com/150x150/avatar-2?i=f7de8aff0b8c3f4bc758e106d80d071e', // TODO 
-          // approved_clients: [] // Optional, I don't think we need it
+          approved_clients: [] 
         }
       ]
     }
