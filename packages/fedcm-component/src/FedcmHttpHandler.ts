@@ -197,7 +197,7 @@ private async deleteToken(tokenId: string, authorization: string) {
     const cookies = parse(request.headers.cookie || '')
 
     if (!('css-account' in cookies)) {
-      response.writeHead(400, { 'Content-Type': 'text/plain' });
+      response.writeHead(401, { 'Content-Type': 'text/plain' });
       response.end(JSON.stringify({ error: "Missing 'css-account' in request's cookies" }));
       return;
     }
