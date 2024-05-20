@@ -30,7 +30,8 @@
   },
   "files": [
     "dist",
-    "config"
+    "config",
+    "templates"
   ],
   "dependencies": {
     "@inrupt/solid-client-authn-core": "^2.1.0",
