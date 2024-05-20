@@ -1,27 +1,31 @@
 {
-  "name": "fedcm-module",
-  "version": "7.0.0",
-  "description": "A minimal example of a repository containing an injectable Community Solid Server module",
-  "repository": "git@github.com:CommunitySolidServer/fedcm-module.git",
+  "name": "css-fedcm-module",
+  "version": "7.0.1",
+  "description": "A Community Solid Server Module to test FedCM ( Federated Credential Management ) authentification.",
+  "repository": "git@github.com:liquid-surf/fedcm-module.git",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "lsd:module": "https://linkedsoftwaredependencies.org/bundles/npm/fedcm-module",
+  "lsd:module": "https://linkedsoftwaredependencies.org/bundles/npm/css-fedcm-module",
   "lsd:components": "dist/components/components.jsonld",
   "lsd:contexts": {
-    "https://linkedsoftwaredependencies.org/bundles/npm/fedcm-module/^7.0.0/components/context.jsonld": "dist/components/context.jsonld"
+    "https://linkedsoftwaredependencies.org/bundles/npm/css-fedcm-module/^7.0.0/components/context.jsonld": "dist/components/context.jsonld"
   },
   "lsd:importPaths": {
-    "https://linkedsoftwaredependencies.org/bundles/npm/fedcm-module/^7.0.0/components/": "dist/components/",
-    "https://linkedsoftwaredependencies.org/bundles/npm/fedcm-module/^7.0.0/config/": "config/",
-    "https://linkedsoftwaredependencies.org/bundles/npm/fedcm-module/^7.0.0/dist/": "dist/"
+    "https://linkedsoftwaredependencies.org/bundles/npm/css-fedcm-module/^7.0.0/components/": "dist/components/",
+    "https://linkedsoftwaredependencies.org/bundles/npm/css-fedcm-module/^7.0.0/config/": "config/",
+    "https://linkedsoftwaredependencies.org/bundles/npm/css-fedcm-module/^7.0.0/dist/": "dist/"
   },
   "scripts": {
     "start": "community-solid-server -c fedcm-file.json -f data -m . -p 3000",
+    "start2": "community-solid-server -c fedcm-file.json -f data2 -m . -p 3001",
     "start:debug": "npm run build && community-solid-server -c fedcm-file.json -f data -m . -p 3000",
     "build": "npm run build:ts && npm run build:components",
     "build:components": "componentsjs-generator -s src -c dist/components -i .componentsignore -r fedcm",
     "build:ts": "tsc",
     "prepare": "npm run build",
+    "pub": "npm run build && npm version patch --force && npm publish --access public",
+    "pub:min": "npm run build && npm version minor --force && npm publish --access public",
+    "pub:maj": "npm run build && npm version major --force && npm publish --access public",
     "test": "jest"
   },
   "files": [
