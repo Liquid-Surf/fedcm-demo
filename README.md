@@ -8,8 +8,9 @@ npm run build
 npm run start
 ```
 
-First you need chrome canary with the `FedCM Authz` and `FedCM with IdP Registration support` flags enabled in `chrome://flags/`
+First you need chrome canary / dev build version > 129  with the `FedCM Authz`, `FedCmMultiIdp` and `FedCM with IdP Registration support` flags enabled in `chrome://flags/`
 
+## On localhost
 
  - create an account on [http://localhost:3000/.account/](http://localhost:3000/.account/) . Don't forget to add a pod to your account, then log out.
 
@@ -20,6 +21,17 @@ First you need chrome canary with the `FedCM Authz` and `FedCM with IdP Registra
  - Trigger the Dynamic Client Registration on 1)
  - Click the fedcm login button on 2)
  - Now try to fetch your profile on 3) again, you should receive the resource without an error.
+
+## hosted
+
+if the client and CSS don't have the same domain or subdomain, the current CSS instance in `./packages/fedcm-component/` won't work because of the `SameSite=None` cookie policiy of FedCM.
+Please refere to [this repo](https://github.com/thhck/fedcm-css-exp) instead  
+
+# demo
+
+[video demo](./demo_video/demo_2.mp4)
+[client](https://fedcm-client.liquid.surf/)
+[css](https://exp.liquid.surf/)
 
 # status
 
@@ -35,4 +47,4 @@ This demo doesn't pretend to be secure nor fully spec-compliant, but rather to s
    - [X] Modify the client to get register IdPs from the user agent
    - [ ] Match the Origin header against the RP origin determined by the client_id. Reject if they don't match. ( [3.5 - 2](https://fedidcg.github.io/FedCM/#idp-api-id-assertion-endpoint) )
  - [ ] create npm package and publishing script
- - [ ] add it to https://pod.liquid.surf
+ - [X] add it to https://pod.liquid.surf ( used exp.liquid.surf instead )
