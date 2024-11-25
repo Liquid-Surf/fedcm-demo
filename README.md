@@ -1,7 +1,7 @@
 
 
 # usage
-
+Requires [bun](https://bun.sh/docs/installation).
 ```
 npm i
 npm run build
