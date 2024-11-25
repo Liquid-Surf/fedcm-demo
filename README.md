@@ -17,7 +17,7 @@ First you need to use a browser that supports FedCM, such as Chrome (version tes
  - open a private window
  - first go to [http://localhost:3000/.account/](http://localhost:3000/.account/) , click `register IdP to FedCM`  and log in with the account created in the previous step
  - then go to the client at [http://localhost:6080](http://localhost:6080)
- - under section 3) of the page, edit the textbox so that it has your profile folder instead of 'http://localhost:3000/a/profile/'
+ - under section 3) of the page, edit the textbox so that it has your profile folder `http://localhost:3000/<your_pod_name>/profile/` instead of `http://localhost:3000/a/profile/`
  - confirm that 'Fetch resource' results in a 401 error.
  - under section 2) of the page, click the fedcm login button. It will offer to log you in as 'John Doe', but with your WebID from the previous step.
  - confirm that your WebID and an access token appear.
