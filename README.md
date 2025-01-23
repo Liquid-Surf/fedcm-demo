@@ -24,8 +24,9 @@ First you need chrome canary / dev build version > 129  with the `FedCM Authz`, 
 
 ## hosted
 
-if the client and CSS don't have the same domain or subdomain, the current CSS instance in `./packages/fedcm-component/` won't work because of the `SameSite=None` cookie policiy of FedCM.
-Please refere to [this repo](https://github.com/thhck/fedcm-css-exp) instead  
+if the client and CSS don't have the same domain or subdomain, the current CSS instance in `./packages/fedcm-component/` won't work because FedCM require cookies with `SameSite=None` cookie policiy, which introduce security issue. 
+Please refere to [this repo](https://github.com/thhck/fedcm-css-exp) to see how to enable `SameSite=None` on CSS. 
+A workaround can be implemented: https://github.com/w3c-fedid/FedCM/issues/587#issuecomment-2358814630 but not sure how safe it is.   
 
 # demo
 
