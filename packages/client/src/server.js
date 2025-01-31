@@ -1,7 +1,7 @@
 import express from "express";
 
 const app = express();
-const port = 6080;
+const port = process.env.PORT  || 6080; // Accept from env, CLI args, or default
 
 app.use(express.static('public'));
 

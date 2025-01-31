@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "bun src/server.js",
+    "start:mitm": "echo \"PLEASE START THE MITMPROXY WITH 'mitmproxy --mode reverse:http://localhost:6081 -p 6080 --set keep_host_header=true'\"; PORT=6081 bun src/server.js",
     "build": "bun build src/solid.js --outdir public/"
   },
   "dependencies": {
