@@ -35,7 +35,6 @@ export class FedcmHttpHandler extends HttpHandler {
     // A key pair is needed for encryption.
     // This function from `solid-client-authn` generates such a pair for you.
     const dpopKey = await generateDpopKeyPair();
-
     // These are the ID and secret generated in the previous step.
     // Both the ID and the secret need to be form-encoded.
     const authString = `${encodeURIComponent(id)}:${encodeURIComponent(secret)}`;
@@ -44,8 +43,8 @@ export class FedcmHttpHandler extends HttpHandler {
     // if your server is hosted at http://localhost:3000/.
     const tokenUrl = `${this.baseUrl}.oidc/token`;
     try {
-        
-      const response = await fetch(tokenUrl, {
+      const target = tokenUrl;
+      const resp = await fetch(target, {
         method: 'POST',
         headers: {
           // The header needs to be in base64 encoding.
@@ -55,55 +54,59 @@ export class FedcmHttpHandler extends HttpHandler {
         },
         body: 'grant_type=client_credentials&scope=webid',
       });
-      const resp = await response.json();
-      return resp
+      const jresp = await resp.json();
+      this.logger.info(`FETCHING ${target} \n RESPONDED WITH \n ${jresp}`)
+      return jresp
     } catch (error) {
       this.logger.info(`Error in get_token: ${error}`)
-      return 
+      return
     }
 
-  // This is the Access token that will be used to do an authenticated request to the server.
-  // The JSON also contains an "expires_in" field in seconds,
-  // which you can use to know when you need request a new Access token.
+    // This is the Access token that will be used to do an authenticated request to the server.
+    // The JSON also contains an "expires_in" field in seconds,
+    // which you can use to know when you need request a new Access token.
 
-}
-
-
-private async get_client_id_secret(authorization: string, webId: string) {
-
-  // Now that we are logged in, we need to request the updated controls from the server.
-  // These will now have more values than in the previous example.
-  const indexResponse = await fetch(`${this.baseUrl}.account/`, {
-    headers: { authorization: `CSS-Account-Token ${authorization}` }
-  });
-  let { controls }: any = await indexResponse.json();
-  try {
-
-
-    // Here we request the server to generate a token on our account
-    const response = await fetch(controls.account.clientCredentials, {
-      method: 'POST',
-      headers: { authorization: `CSS-Account-Token ${authorization}`, 'content-type': 'application/json' },
-      // The name field will be used when generating the ID of your token.
-      // The WebID field determines which WebID you will identify as when using the token.
-      // Only WebIDs linked to your account can be used.
-      body: JSON.stringify({ name: 'my-token', webId: webId }),
-    });
-
-
-    // These are the identifier and secret of your token.
-    // Store the secret somewhere safe as there is no way to request it again from the server!
-    // The `resource` value can be used to delete the token at a later point in time.
-    const { id, secret } : any = await response.json();
-    return { tokenId: id, secret: secret }
-
-  } catch (error) {
-    this.logger.info(`Error in get_token: ${error}`)
-    return 
   }
 
-}
-private async deleteToken(tokenId: string, authorization: string) {
+
+  private async get_client_id_secret(authorization: string, webId: string) {
+
+    // Now that we are logged in, we need to request the updated controls from the server.
+    // These will now have more values than in the previous example.
+    const indexResponse = await fetch(`${this.baseUrl}.account/`, {
+      headers: { authorization: `CSS-Account-Token ${authorization}` }
+    });
+    let { controls }: any = await indexResponse.json();
+    try {
+
+      let target = controls.account.clientCredentials;
+      // Here we request the server to generate a token on our account
+      const resp = await fetch(target, {
+        method: 'POST',
+        headers: { authorization: `CSS-Account-Token ${authorization}`, 'content-type': 'application/json' },
+        // The name field will be used when generating the ID of your token.
+        // The WebID field determines which WebID you will identify as when using the token.
+        // Only WebIDs linked to your account can be used.
+        body: JSON.stringify({ name: 'my-token', webId: webId }),
+      });
+      const jresp = await resp.json()
+      this.logger.info(`FETCHING ${target} \n RESPONDED WITH \n ${jresp}`)
+
+
+
+      // These are the identifier and secret of your token.
+      // Store the secret somewhere safe as there is no way to request it again from the server!
+      // The `resource` value can be used to delete the token at a later point in time.
+      const { id, secret }: any = jresp;
+      return { tokenId: id, secret: secret }
+
+    } catch (error) {
+      this.logger.info(`Error in get_token: ${error}`)
+      return
+    }
+
+  }
+  private async deleteToken(tokenId: string, authorization: string) {
     const indexResponse = await fetch(`${this.baseUrl}.account/`, {
       headers: { authorization: `CSS-Account-Token ${authorization}` }
     });
@@ -115,7 +118,7 @@ private async deleteToken(tokenId: string, authorization: string) {
     const tokenUrl = listOfTokensJson.clientCredentials[tokenId]
     const delteTokenResp = await fetch(tokenUrl, {
       method: 'DELETE',
-      headers: { authorization: `CSS-Account-Token ${authorization}`}
+      headers: { authorization: `CSS-Account-Token ${authorization}` }
     });
   }
 
@@ -162,19 +165,19 @@ private async deleteToken(tokenId: string, authorization: string) {
     // 
 
     const config = {
-      "accounts_endpoint": "/.well-known/fedcm/accounts_endpoint",
-      "client_metadata_endpoint": "/.well-known/fedcm/client_metadata_endpoint",
-      "id_assertion_endpoint": "/.well-known/fedcm/token",
-      "disconnect_endpoint": "/.well-known/fedcm/disconnect",
-      "revocation_endpoint": ".oidc/token/revocation",
-      "login_url": "/.account/login/password/",
+      "accounts_endpoint": `/.well-known/fedcm/accounts_endpoint`,
+      "client_metadata_endpoint": `/.well-known/fedcm/client_metadata_endpoint`,
+      "id_assertion_endpoint": `/.well-known/fedcm/token`,
+      "disconnect_endpoint": `/.well-known/fedcm/disconnect`,
+      "revocation_endpoint": `/.oidc/token/revocation`,
+      "login_url": `/.account/login/password/`,
       "branding": {
         "background_color": "rgb(255, 055, 255)",
         "color": "0xffffff",
         "context": `Sign in to CSS`,
         "icons": [
           {
-            "url": `${this.baseUrl}.well-known/css/images/solid.png`,
+            "url": `/.well-known/css/images/solid.png`,
             "size": 32
           }
         ]
@@ -195,7 +198,6 @@ private async deleteToken(tokenId: string, authorization: string) {
     //  3. Respond with the list of accounts.
 
     const cookies = parse(request.headers.cookie || '')
-
     if (!('css-account' in cookies)) {
       response.writeHead(401, { 'Content-Type': 'text/plain' });
       response.end(JSON.stringify({ error: "Missing 'css-account' in request's cookies" }));
@@ -227,7 +229,7 @@ private async deleteToken(tokenId: string, authorization: string) {
           // email: 'a@a.a', // TODO get user's email ?
           email: webId, // giving the webId instead of an email
           picture: 'https://doodleipsum.com/150x150/avatar-2?i=f7de8aff0b8c3f4bc758e106d80d071e', // TODO 
-          approved_clients: [] 
+          approved_clients: []
         }
       ]
     }
@@ -274,15 +276,15 @@ private async deleteToken(tokenId: string, authorization: string) {
       return
     }
 
-    if (!nonce) {
-      const error_msg = 'Nonce missing. To make FedCM work with Solid-OIDC, you need to pass the DPoP Header through the nonce value in the request.'
-      this.logger.info(error_msg)
-      response.writeHead(400, { 'Content-Type': 'application/json' })
-      response.end(JSON.stringify({ 'error': error_msg }))
-      return
-    }
+    // if (!nonce) {
+    //   const error_msg = 'Nonce missing. To make FedCM work with Solid-OIDC, you need to pass the DPoP Header through the nonce value in the request.'
+    //   this.logger.info(error_msg)
+    //   response.writeHead(400, { 'Content-Type': 'application/json' })
+    //   response.end(JSON.stringify({ 'error': error_msg }))
+    //   return
+    // }
 
-    const dpopHeader = nonce // This is a hack since FedCM doesn't support DPoP Header, 
+    // const dpopHeader = nonce // This is a hack since FedCM doesn't support DPoP Header, 
     // we pass it through the nonce, since its an optional feature of FedCM
 
 
@@ -335,13 +337,15 @@ private async deleteToken(tokenId: string, authorization: string) {
 
     // TODO re-use previous token instead of creating a new
     const { tokenId, secret }: any = await this.get_client_id_secret(cssAccountCookie, webId)
-    const { access_token: accessToken } : any = await this.get_token(tokenId, secret, dpopHeader)
+    const authString = `${encodeURIComponent(tokenId)}:${encodeURIComponent(secret)}`;
+
+    // const { access_token: accessToken }: any = await this.get_token(tokenId, secret, dpopHeader)
     // seems that we can safely delete the tokenId once we have the access token
     // then we don't poluate the account with an incremental number of access tokens
-    await this.deleteToken(tokenId, cssAccountCookie)
+    // await this.deleteToken(tokenId, cssAccountCookie)
 
     response.writeHead(200, { 'Content-Type': 'application/json' })
-    response.end(JSON.stringify({ 'token': accessToken }))
+    response.end(JSON.stringify({ 'token': authString }))
   }
 
 

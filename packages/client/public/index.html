@@ -28,9 +28,13 @@
   <div id="response" ></div>
 
   <script type="module">
-    import { extractWebID, fetchRessource, startFedcmLogin } from './solid.js'
+    import { extractWebID, fetchRessource, startFedcmLogin, getAccessToken } from './solid.js'
     let DPOP_KEYS = null;
     let CSS_URL = 'http://localhost:3000/'
+    //let CSS_URL = 'http://b.localhost:3000/'
+    // let CSS_URL = 'http://idp1.localhost:3000/'
+    //let CSS_URL = 'https://pod.liquid.surf/'
+    //let CSS_URL = 'https://dirty-ducks-smile.loca.lt/'
 
     document.getElementById('target').value     = `${CSS_URL}a/profile/`
     document.getElementById('cssurl').value     = `${CSS_URL}`
@@ -39,21 +43,22 @@
 
     const callFedcm = async () => {
       const cssUrl = document.getElementById('cssurl').value
-      const { access_token, dpopKey } = await startFedcmLogin(cssUrl)
-      DPOP_KEYS = dpopKey
-      console.log(access_token, dpopKey)
-      console.log('token', access_token.token)
-      document.getElementById('token').value = access_token.token
-      document.getElementById('loginstatus').innerText = `You are logged in with ${extractWebID(access_token.token)}`
+      const { authString } = await startFedcmLogin(cssUrl)
+      console.log(authString)
+      document.getElementById('token').value = authString.token
+      // document.getElementById('loginstatus').innerText = `You are logged in with ${extractWebID(authString.token)}`
     }
 
     const fetchTarget = async () => {
       const target = document.getElementById('target').value
       const token = document.getElementById('token').value
       console.log('token', token)
-      const res = await fetchRessource(target, token, DPOP_KEYS)
-      document.getElementById('response').innerText = res
-      console.log(res)
+      const {accessToken, dpopKey } = await getAccessToken(token, CSS_URL)
+      console.log('access token', accessToken )
+      DPOP_KEYS = dpopKey
+      const resp = await fetchRessource(target, accessToken, DPOP_KEYS)
+      console.log("resp", resp)
+      document.getElementById('response').innerText = resp
     }
 
 
