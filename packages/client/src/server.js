@@ -11,7 +11,8 @@ const clientId = {
   "client_id": `123`,
   "client_name": "test RP",
   "redirect_uris": [
-    `http://localhost:${port}/`
+    // `http://localhost:${port}/`
+    `http://rp.localhost:${port}/`
   ],
 }
 

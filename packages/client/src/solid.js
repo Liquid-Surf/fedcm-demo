@@ -89,7 +89,8 @@ export async function startFedcmLogin(cssUrl) {
     "providers": [
       {
         "configURL": `any`,
-        "clientId": `http://client.localhost:6080/clientid`,
+        // "clientId": `http://client.localhost:6080/clientid`,
+        "clientId": `http://rp.localhost:6080/clientid`,
         "nonce": ``,
         "registered": true,
         "grant type": "webid"
