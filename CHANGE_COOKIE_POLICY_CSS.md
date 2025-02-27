@@ -19,5 +19,13 @@ On linux ( and probably mac ), run `sudo $EDITOR /etc/hosts` and add
 ```
 at the end of the file.
 
+# run it with loca.lt
+
+ lt --port 3000 --host https://localtunnel.me
+ lt --port 6080 --host https://localtunnel.me
+
+ remember to start css with -b {local_tunnel_url}
+ remember to change the url in the client
+  - in index.html, solid.js and server.js
 
 
