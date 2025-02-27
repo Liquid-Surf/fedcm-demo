@@ -1,14 +1,16 @@
 
 
 # usage
-
+Requires [bun](https://bun.sh/docs/installation).
 ```
 npm i
 npm run build
 npm run start
 ```
 
-First you need chrome canary / dev build version > 129  with the `FedCM Authz`, `FedCmMultiIdp` and `FedCM with IdP Registration support` flags enabled in `chrome://flags/`
+First you need to use a browser that supports FedCM, such as:
+* use Chrome >= 128, go to chrome://flags and enter "fedcm" to filter the flags
+* Enable "FedCM with IdP Registration support" and "FedCmMultiIdp"
 
 ## On localhost
 
@@ -17,15 +19,17 @@ First you need chrome canary / dev build version > 129  with the `FedCM Authz`, 
  - open a private window
  - first go to [http://localhost:3000/.account/](http://localhost:3000/.account/) , click `register IdP to FedCM`  and log in with the account created in the previous step
  - then go to the client at [http://localhost:6080](http://localhost:6080)
-   - note: if you try to fetch your profile at `http://localhost:3000/<your_pod_name>/profile/` on step 3. You will get an error, as you need to be logged to access this resource.
- - Trigger the Dynamic Client Registration on 1)
- - Click the fedcm login button on 2)
- - Now try to fetch your profile on 3) again, you should receive the resource without an error.
+ - under section 3) of the page, edit the textbox so that it has your profile folder `http://localhost:3000/<your_pod_name>/profile/` instead of `http://localhost:3000/a/profile/`
+ - confirm that 'Fetch resource' results in a 401 error.
+ - under section 2) of the page, click the fedcm login button. It will offer to log you in as 'John Doe', but with your WebID from the previous step.
+ - confirm that your WebID and an access token appear.
+ - click 'Fetch resource' again. It should display an `ldp:Container` description
 
 ## hosted
 
-if the client and CSS don't have the same domain or subdomain, the current CSS instance in `./packages/fedcm-component/` won't work because of the `SameSite=None` cookie policiy of FedCM.
-Please refere to [this repo](https://github.com/thhck/fedcm-css-exp) instead  
+if the client and CSS don't have the same domain or subdomain, the current CSS instance in `./packages/fedcm-component/` won't work because FedCM require cookies with `SameSite=None` cookie policiy, which introduce security issue. 
+Please refer to [this repo](https://github.com/thhck/fedcm-css-exp) to see how to enable `SameSite=None` on CSS. 
+A workaround can be implemented: https://github.com/w3c-fedid/FedCM/issues/587#issuecomment-2358814630 but not sure how safe it is.   
 
 # demo
 
