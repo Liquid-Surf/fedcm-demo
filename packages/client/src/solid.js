@@ -89,9 +89,7 @@ export async function startFedcmLogin(cssUrl) {
     "providers": [
       {
         "configURL": `any`,
-        // "clientId": `http://localhost:6090/clientid`,
-        // "clientId": `http://rp.localhost:6080/clientid`,
-        "clientId": `http://stale-moles-sneeze.loca.lt:6080/clientid`,
+        "clientId": `http://localhost:6090/clientid`,
         "nonce": ``,
         "registered": true,
         "grant type": "webid"
