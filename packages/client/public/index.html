@@ -10,6 +10,7 @@
 </head>
 
 <body>
+  <button id="startInruptLogin">Inrupt Login</button>
   <h1> 1. Solid-oidc FedCM Demo </h1>
   <p>CSS url:
     <input id="cssurl" />
@@ -17,7 +18,7 @@
   <h2> 2. Login </h2>
   <p>Make sure your logged with your <a id="accountlink">css account</a></p>
   <button id="startFedcmLogin">fedcm login</button>
-  <div id="loginstatus" ></div>
+  <div id="loginstatus"></div>
   <p>access token:
     <input id="token" />
   </p>
@@ -25,15 +26,28 @@
   <input id="target" size="40" />
   <button id="fetch">Fetch Resource</button>
   <h2>Response</h2>
-  <div id="response" ></div>
+  <div id="response"></div>
 
   <script type="module">
-    import { extractWebID, fetchRessource, startFedcmLogin, getAccessToken } from './solid.js'
+    import { extractWebID, fetchRessource, startFedcmLogin, getAccessToken, inruptLogin, session } from './solid.js'
+
+    const handleSession = async (url = undefined) => {
+      console.log("handling Incomming Redirect")
+      const target = url ? url :window.location.href
+      await session.handleIncomingRedirect(target);
+      if (session.info.isLoggedIn) {
+        console.log(`User is logged in with WebID: ${session.info.webId}`);
+        console.log(session.info);
+      } else {
+        console.log('not logged in..')
+      }
+    }
+
     let DPOP_KEYS = null;
     let CSS_URL = 'http://localhost:3000/'
 
-    document.getElementById('target').value     = `${CSS_URL}a/profile/`
-    document.getElementById('cssurl').value     = `${CSS_URL}`
+    document.getElementById('target').value = `${CSS_URL}a/profile/`
+    document.getElementById('cssurl').value = `${CSS_URL}`
     document.getElementById('accountlink').href = `${CSS_URL}.account/`
 
 
@@ -41,6 +55,9 @@
       const cssUrl = document.getElementById('cssurl').value
       const { authString } = await startFedcmLogin(cssUrl)
       console.log(authString)
+      // window.location = authString.token
+      await handleSession(authString.token)
+
       document.getElementById('token').value = authString.token
       // document.getElementById('loginstatus').innerText = `You are logged in with ${extractWebID(authString.token)}`
     }
@@ -49,8 +66,8 @@
       const target = document.getElementById('target').value
       const token = document.getElementById('token').value
       console.log('token', token)
-      const {accessToken, dpopKey } = await getAccessToken(token, CSS_URL)
-      console.log('access token', accessToken )
+      const { accessToken, dpopKey } = await getAccessToken(token, CSS_URL)
+      console.log('access token', accessToken)
       DPOP_KEYS = dpopKey
       const resp = await fetchRessource(target, accessToken, DPOP_KEYS)
       console.log("resp", resp)
@@ -59,9 +76,17 @@
 
 
     document.getElementById('startFedcmLogin')
-      .addEventListener('click', async () => await callFedcm())
+      .addEventListener('click', async () => await callFedcm());
     document.getElementById('fetch')
-      .addEventListener('click', async () => await fetchTarget())
+      .addEventListener('click', async () => await fetchTarget());
+    document.getElementById('startInruptLogin')
+      .addEventListener('click', async () => await inruptLogin(CSS_URL));
+
+    (async () => {
+      await handleSession()
+    })();
+
+
   </script>
 </body>
 

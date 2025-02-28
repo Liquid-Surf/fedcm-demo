@@ -20,7 +20,8 @@
         "@type": "FedcmHttpHandler",
         "baseUrl": { "@id": "urn:solid-server:default:variable:baseUrl" },
         "webIdStore": { "@id": "urn:solid-server:default:WebIdStore" },
-        "cookieStore": { "@id": "urn:solid-server:default:CookieStore" }
+        "cookieStore": { "@id": "urn:solid-server:default:CookieStore" },        
+        "providerFactory": { "@id": "urn:solid-server:default:IdentityProviderFactory" }
       }
     }
   ]

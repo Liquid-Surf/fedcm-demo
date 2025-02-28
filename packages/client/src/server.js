@@ -13,6 +13,9 @@ const clientId = {
   "redirect_uris": [
     `http://localhost:${port}/`
   ],
+
+  "grant_types": ["authorization_code"],
+  "response_types": ["code"]
 }
 
 app.get("/clientid", (req, res) => {

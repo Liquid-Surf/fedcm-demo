@@ -1,6 +1,9 @@
 
 import { buildAuthenticatedFetch, createDpopHeader, generateDpopKeyPair } from '@inrupt/solid-client-authn-core';
+import { Session } from '@inrupt/solid-client-authn-browser';
 import { collapseTextChangeRangesAcrossMultipleVersions } from 'typescript';
+
+export const session = new Session()
 
 
 export async function fetchRessource(url, accessToken, dpopKey) {
@@ -67,7 +70,7 @@ export async function getAccessToken(authString, opUrl) {
     const jresp = await resp.json();
     console.log(`fetching ${target} and got`, jresp)
     const { access_token: accessToken } = jresp
-    console.log('result', { accessToken, dpopKey } )
+    console.log('result', { accessToken, dpopKey })
     return { accessToken, dpopKey }
   } catch (error) {
     console.log(`Error in getAccessToken: ${error}`)
@@ -80,19 +83,50 @@ export async function getAccessToken(authString, opUrl) {
 
 }
 
+export async function inruptLogin(cssUrl) {
+  if (!session.info.isLoggedIn) {
+    // Initiate login
+    const login_response = await session.login({
+      // clientId: `${window.location.href}clientid`,
+      oidcIssuer: cssUrl,
+      redirectUrl: window.location.href,
+      clientName: "Solid Demo App",
+      prompt: "consent",
+    });
+    console.log("login_response", login_response)
+  }
+  // else {
+  //   // Logout
+  //   await session.logout();
+  //   window.location.reload();
+  // }
+}
 
+function parseUrlParam() {
+  const urlObj = new URL(window.location.href);
+  const queryData = Object.fromEntries(urlObj.searchParams.entries());
+  return queryData;
+}
 
 export async function startFedcmLogin(cssUrl) {
   console.log('startFedcmLogin')
-
+  const params = parseUrlParam()
+  console.log("params", params)
+  // const clientId = `${window.location.protocol}//${window.location.host}/clientid`
   const identity_registered = {
     "providers": [
       {
         "configURL": `any`,
-        "clientId": `http://localhost:6090/clientid`,
-        "nonce": ``,
+        "clientId": params.client_id,
         "registered": true,
-        "grant type": "webid"
+        // "type": "webid",
+        "params": {
+          "code_challenge": params.code_challenge,
+          "code_challenge_method": params.code_challenge_method,
+          "state": params._state
+
+        }
+
       }
     ]
   }
@@ -105,7 +139,7 @@ export async function startFedcmLogin(cssUrl) {
     return { authString }
   } catch (error) {
     console.log("Client Error calling the navigator api: ", error);
-    return 
+    return
 
   }
 }

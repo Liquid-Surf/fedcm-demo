@@ -1,4 +1,6 @@
-import { CookieStore } from '@solid/community-server';
+import { BadRequestHttpError, CookieStore, finishInteraction, HttpRequest, HttpResponse, InternalServerError, ProviderFactory } from '@solid/community-server';
+import { Interaction } from '@solid/community-server';
+import { forgetWebId } from '@solid/community-server';
 import { HttpHandler } from '@solid/community-server';
 import type { HttpHandlerInput } from '@solid/community-server';
 import { WebIdStore } from '@solid/community-server';
@@ -6,7 +8,7 @@ import { generateDpopKeyPair } from '@inrupt/solid-client-authn-core';
 import { getLoggerFor } from '@solid/community-server';
 import { parse } from 'cookie'
 import { readableToString } from '@solid/community-server';
-
+import { InteractionResults } from '@solid/community-server/templates/types/oidc-provider';
 
 /**
  * HTTP handler that handle all FedCM requests.
@@ -17,11 +19,14 @@ export class FedcmHttpHandler extends HttpHandler {
   private readonly baseUrl: string;
   private readonly cookieStore: CookieStore;
   private readonly webIdStore: WebIdStore;
+  private readonly providerFactory;
+
 
   public constructor(
     baseUrl: string,
-    cookieStore: CookieStore,
     webIdStore: WebIdStore,
+    cookieStore: CookieStore,
+    providerFactory: ProviderFactory,
   ) {
     super();
     this.baseUrl = baseUrl.slice(-1) === '/'
@@ -29,6 +34,7 @@ export class FedcmHttpHandler extends HttpHandler {
       : `${baseUrl}/`; // TODO check if CSS does it automatically     
     this.cookieStore = cookieStore
     this.webIdStore = webIdStore
+    this.providerFactory = providerFactory
   }
 
   private async get_token(id: string, secret: string, dpopHeader: string) {
@@ -252,6 +258,274 @@ export class FedcmHttpHandler extends HttpHandler {
     response.end(JSON.stringify(metadata));
   }
 
+  // ------ UTILS FOR handleToken ------- //
+
+  private async fetchWithDefaults(url: string, options: RequestInit = {}): Promise<Response> {
+    const defaultHeaders: Record<string, string> = {
+      'Host': 'localhost:3000',
+      'Connection': 'keep-alive',
+      'Sec-Fetch-Site': 'same-origin',
+      'Sec-Fetch-Mode': 'cors',
+    };
+    options.headers = { ...defaultHeaders, ...(options.headers || {}) };
+    return fetch(url, options);
+  }
+  private renameCookiePath(cookieArray: Array<string>, newPath: string = '/'): Array<string> {
+    let res: Array<string> = []
+    // const setCookieHeader = pickWebIdCookie.getSetCookie();
+    // if (setCookieHeader && Array.isArray(setCookieHeader)) {
+    cookieArray.forEach((c: string) => {
+      res.push(
+        c.replace('path=/.account/', `path=${newPath}`)
+          .replace(/path=\/\.oidc\/auth\/[a-zA-Z0-9_-]+;/, `path=${newPath};`)
+      );
+    });
+    return res
+  }
+
+  // Parses a cookie header string into a key/value record.
+  private cookieParser(cookieString: string): Record<string, string> {
+    return cookieString.split('; ').reduce((acc, cookie) => {
+      const [key, value] = cookie.split('=');
+      acc[key] = value;
+      return acc;
+    }, {} as Record<string, string>);
+  }
+
+  // Helper to turn an array of cookie strings into a single header string.
+  private parseCookiesArray(cookies: string[]): string {
+    if (!cookies) return '';
+    return cookies.map(cookie => cookie.split(';')[0]).join('; ') + ';';
+  }
+
+
+  // Get first OIDC interaction cookie
+  private async initiateOidcInteraction(clientId: string, clientUrl: string, codeChallenge: string, state: string): Promise<any> {
+    const redirectUri = encodeURIComponent(clientUrl);
+    const responseType = 'code';
+    const scope = 'openid offline_access webid';
+    const codeChallengeMethod = 'S256';
+    const prompt = 'consent';
+    const responseMode = 'query';
+
+    const url = `${this.baseUrl}.oidc/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=${responseType}&scope=${encodeURIComponent(scope)}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=${codeChallengeMethod}&prompt=${prompt}&response_mode=${responseMode}&bypass=true`;
+
+    const headers = {
+      'Host': `localhost:3000`,
+      'Accept': 'text/html',
+      // 'Referer': clientUrl,
+      'Referer': 'http://localhost:6080/',
+      'Sec-Fetch-Site': "same-site",
+      'Sec-Fetch-Mode': "navigate",
+      'Sec-Fetch-Dest': "document",
+      'Connection': "keep-alive"
+
+    };
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+      // Do not follow the 303 redirect
+      redirect: 'manual',
+      credentials: 'include'
+    });
+
+    const resp_status = response.status
+    const resp_cookies = response.headers.getSetCookie()
+    const resp_body = await response.text()
+
+    return resp_cookies
+
+  }
+
+  // Creates the OIDC interaction if available.
+  private async getOidcInteraction({ request, response }: HttpHandlerInput, initiateOidcInteractionCookies: Array<string>): Promise<Interaction | undefined> {
+    let req_with_cookie = request
+    req_with_cookie.headers.cookie += '; '
+    req_with_cookie.headers.cookie += initiateOidcInteractionCookies.join('; ')
+
+    try {
+      const provider = await this.providerFactory.getProvider();
+      // Keeping this here, it create an error on oidc-provider
+      // will try to reproduce it
+      // request.headers.cookie += ';_interaction=mWJLy75-lL8EhhJpy7lpu; _interaction.sig=QfxSPQxo6gYTyfT3TspY6JTt1v0;css-account=c5dfed2a-cfc2-4862-b94e-b791cb1d7c89'
+      return await provider.interactionDetails(req_with_cookie, response);
+    } catch (err) {
+      this.logger.debug('No active OIDC interaction found:' + err);
+      return undefined;
+    }
+  }
+
+  // RESOLVELOGIN: Generates an authorization cookie and (if an OIDC interaction exists)
+  // finishes the interaction to update policies.
+  private async resolveLogin(accountId: string, interaction: Interaction | undefined): Promise<string> {
+    // TODO just put part of the resolveLogin code, might need to recheck that part
+    let authorization: string;
+    authorization = await this.cookieStore.generate(accountId);
+    if (interaction) {
+      // Finish the interaction so the policies are checked again, where they will find the new cookie
+      await finishInteraction(interaction, {}, true);
+    }
+    return authorization;
+  }
+
+  // PICK-WEBID: Calls the pick-webid endpoint, updates the OIDC interaction with the picked WebID,
+  // and retrieves the redirect response to be used in the consent flow.
+  private async pickWebIdAndFinishInteraction(
+    request: HttpRequest,
+    authorization: string,
+    interaction: Interaction | undefined
+  ): Promise<{ pickWebIdCookies: Array<string> }> {
+    if (!interaction) {
+      throw new BadRequestHttpError('No active OIDC interaction available.');
+    }
+    try {
+      // TODO get url dynamically
+      // TODO do not use fetch, import code from pick-webid
+      const pickWebIdEndpoint = 'http://localhost:3000/.account/oidc/pick-webid/';
+      let originalCookie = request.headers.cookie || ''
+      originalCookie += `; css-account=${authorization}`;
+      originalCookie = originalCookie.split('; ').slice(1).join('; ')
+
+      const webIdResponse = await this.fetchWithDefaults(pickWebIdEndpoint, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Sec-Fetch-Dest': 'empty',
+          'Cookie': originalCookie
+        } as any,
+      });
+
+      if (!webIdResponse.ok) {
+        throw new InternalServerError('Failed to fetch pick-webid endpoint.');
+      }
+      const webIdJson: any = await webIdResponse.json();
+      if (webIdJson.webIds.length < 1)
+        throw new InternalServerError('No webId for this account');
+      const webId = webIdJson.webIds[0];
+
+      const provider = await this.providerFactory.getProvider();
+      await forgetWebId(provider, interaction);
+
+      const login: InteractionResults['login'] = {
+        // Note that `accountId` here is unrelated to our user accounts but is part of the OIDC library
+        accountId: webId,
+        remember: false,
+      };
+
+      const location = await finishInteraction(interaction, { login }, true);
+      // TODO: try to forge request and send it to this.oidcHttpHandler
+      const redirectResponse = await fetch(location, {
+        method: 'GET',
+        headers: {
+          'Host': 'localhost:3000',
+          'Connection': 'keep-alive',
+          'Accept': 'text/html',
+          'Sec-Fetch-Site': 'same-origin',
+          'Sec-Fetch-Mode': 'cors',
+          'Sec-Fetch-Dest': 'empty',
+          'Cookie': originalCookie
+        } as any,
+        redirect: 'manual',
+        credentials: 'include'
+      });
+
+      const pickWebIdCookies = (redirectResponse.headers as any).getSetCookie();
+      if (!(pickWebIdCookies && Array.isArray(pickWebIdCookies))) {
+        // assert cookie error
+      }
+
+      return { pickWebIdCookies };
+    } catch (err) {
+      this.logger.error('Error during pick-webid processing:' + err);
+      throw new InternalServerError('Pick-webid process failed.');
+    }
+  }
+
+  // CONSENT: Uses the redirect response from the previous step to extract cookies,
+  // then calls the consent endpoint and finally performs the last fetch to retrieve the final cookies and redirect URL.
+  private async processConsent(
+    pickWebIdCookies: Array<string>,
+    cgaCookie: string,
+    authorization: string
+  ): Promise<{ consentCookies: string; finalRedirect: string }> {
+    try {
+      // Process cookies from the redirect response.
+      const cookies = this.renameCookiePath(pickWebIdCookies)
+      cookies.push(`cga-cookie=${cgaCookie}; Path=/; SameSite=Lax`);
+      cookies.push(`css-account=${authorization}; Path=/; SameSite=Lax`);
+
+      const cookiesHeader = this.parseCookiesArray(cookies);
+
+      // TODO get url dynamically
+      const consentUrl = 'http://localhost:3000/.account/oidc/consent/';
+      const body = JSON.stringify({ remember: true });
+      const consentResponse = await fetch(consentUrl, {
+        method: 'POST',
+        headers: {
+          'Host': 'localhost:3000',
+          'Connection': 'keep-alive',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Sec-Fetch-Site': 'same-origin',
+          'Sec-Fetch-Mode': 'cors',
+          'Sec-Fetch-Dest': 'empty',
+          'Cookie': cookiesHeader
+        } as any,
+        body,
+      });
+      if (!consentResponse.ok) {
+        throw new InternalServerError('Consent endpoint responded with an error.');
+      }
+      const consentJson = await consentResponse.json();
+      const consentLocation = (consentJson as any).location;
+      // const cookieLast = cookiesHeader.split(';').slice(4).join(';');
+      const cookieLast = cookiesHeader;
+
+
+      // LAST FETCH: Do not follow the 303 redirect so we can grab the cookies.
+      const lastFetch = await fetch(consentLocation, {
+        method: 'GET',
+        headers: {
+          'Host': 'localhost:3000',
+          'Connection': 'keep-alive',
+          'Accept': 'text/html',
+          'Sec-Fetch-Site': 'same-origin',
+          'Sec-Fetch-Mode': 'cors',
+          'Sec-Fetch-Dest': 'document',
+          'Cookie': cookieLast
+        } as any,
+        redirect: 'manual',
+        credentials: 'include'
+      });
+      const lastSetCookieHeader = (lastFetch.headers as any).getSetCookie();
+      const cookiesLastArray: string[] = lastSetCookieHeader && Array.isArray(lastSetCookieHeader) ?
+        this.renameCookiePath(lastSetCookieHeader)
+        : []
+      //TODO handle empty array case 
+
+      cookiesLastArray.push(`cga-cookie=${cgaCookie}; Path=/; SameSite=Lax`);
+      cookiesLastArray.push(`css-account=${authorization}; Path=/; SameSite=Lax`);
+
+      const cookiesHeaderLast = this.parseCookiesArray(cookiesLastArray);
+      const clientRedirect = lastFetch.headers.get('location') || '';
+      return { consentCookies: cookiesHeaderLast, finalRedirect: clientRedirect };
+    } catch (err) {
+      this.logger.error('Error during consent processing:' + err);
+      throw new InternalServerError('Consent process failed.');
+    }
+  }
+
+  private async getSession(accountId: string, cssAccountCookie: string, provider: any) {
+    return async (sid="") => {
+      const session = accountId ? await provider.Session.find(accountId) : null;
+      const session2 = cssAccountCookie ? await provider.Session.find(cssAccountCookie) : null;
+      const session3 = sid != '' ? await provider.Session.find(sid) : null
+      return  session || session2 || session3 
+    }
+  }
+
+
   private async handleToken({ request, response }: HttpHandlerInput): Promise<void> {
     // 3.5
     // https://fedidcg.github.io/FedCM/#idp-api-id-assertion-endpoint
@@ -267,6 +541,9 @@ export class FedcmHttpHandler extends HttpHandler {
     const r = await readableToString(request)
     const client_id = new URLSearchParams(r).get('client_id') || ''
     const nonce = new URLSearchParams(r).get('nonce') || undefined
+    const params_raw = new URLSearchParams(r).get('params') || undefined
+    const params = params_raw ? JSON.parse(params_raw) : {}
+
 
     if (!client_id) {
       const error_msg = 'client_id missing from the request\'s body.'
@@ -329,6 +606,33 @@ export class FedcmHttpHandler extends HttpHandler {
     }
 
 
+    // ------ GET AUTHZ CODE ------ //
+
+    const initiateOidcInteractionCookies =
+      await this.initiateOidcInteraction(
+        encodeURIComponent(client_id),
+        "http://localhost:6080/",
+        params.code_challenge,
+        params.state)
+    let cgaCookie = '123';
+    const oidcInteraction = await this.getOidcInteraction({ request, response }, initiateOidcInteractionCookies);
+
+    const authorization = await this.resolveLogin(accountId, oidcInteraction);
+
+    // ----- PICK-WEBID -----
+    const { pickWebIdCookies } = await this.pickWebIdAndFinishInteraction(
+      request,
+      authorization,
+      oidcInteraction
+    );
+
+
+    // ----- CONSENT -----
+    const { consentCookies, finalRedirect } = await this.processConsent(
+      pickWebIdCookies,
+      cgaCookie,
+      authorization
+    );
 
 
     const accountLinks = await this.webIdStore.findLinks(accountId)
@@ -345,7 +649,8 @@ export class FedcmHttpHandler extends HttpHandler {
     // await this.deleteToken(tokenId, cssAccountCookie)
 
     response.writeHead(200, { 'Content-Type': 'application/json' })
-    response.end(JSON.stringify({ 'token': authString }))
+    // response.end(JSON.stringify({ 'token': authString}))
+    response.end(JSON.stringify({ 'token': finalRedirect  }))
   }
 
 
