@@ -23,13 +23,24 @@
     <input id="token" />
   </p>
   <h2> 3. Fetch a protected resource </h2>
-  <input id="target" size="40" />
-  <button id="fetch">Fetch Resource</button>
-  <h2>Response</h2>
-  <div id="response"></div>
+    <div>
+      <label for="resourceInput">Resource to view:</label>
+      <input
+        type="text"
+        id="resourceInput"
+        placeholder="e.g. http://localhost:3000/alice/private/secret"
+      />
+    </div>
+
+    <!-- Button to fetch & display the file -->
+    <button id="seeFileButton">See File</button>
+    <div id="fileContent"></div>
+
 
   <script type="module">
-    import { extractWebID, fetchRessource, startFedcmLogin, getAccessToken, inruptLogin, session } from './solid.js'
+    import { extractWebID, fetchRessource, startFedcmLogin, getAccessToken, inruptLogin, InruptSession } from './solid.js'
+
+    const session = new InruptSession()
 
     const handleSession = async (url = undefined) => {
       console.log("handling Incomming Redirect")
@@ -46,7 +57,7 @@
     let DPOP_KEYS = null;
     let CSS_URL = 'http://localhost:3000/'
 
-    document.getElementById('target').value = `${CSS_URL}a/profile/`
+    document.getElementById('resourceInput').value = `${CSS_URL}a/profile/`
     document.getElementById('cssurl').value = `${CSS_URL}`
     document.getElementById('accountlink').href = `${CSS_URL}.account/`
 
@@ -62,25 +73,55 @@
       // document.getElementById('loginstatus').innerText = `You are logged in with ${extractWebID(authString.token)}`
     }
 
-    const fetchTarget = async () => {
-      const target = document.getElementById('target').value
-      const token = document.getElementById('token').value
-      console.log('token', token)
-      const { accessToken, dpopKey } = await getAccessToken(token, CSS_URL)
-      console.log('access token', accessToken)
-      DPOP_KEYS = dpopKey
-      const resp = await fetchRessource(target, accessToken, DPOP_KEYS)
-      console.log("resp", resp)
-      document.getElementById('response').innerText = resp
+    //const fetchTarget = async () => {
+      //const target = document.getElementById('target').value
+      //const token = document.getElementById('token').value
+      //console.log('token', token)
+      //const { accessToken, dpopKey } = await getAccessToken(token, CSS_URL)
+      //console.log('access token', accessToken)
+      //DPOP_KEYS = dpopKey
+      //const resp = await fetchRessource(target, accessToken, DPOP_KEYS)
+      //console.log("resp", resp)
+      //document.getElementById('response').innerText = resp
+    //}
+
+    // Fetch resource
+
+		const fetchFile = async () => {
+			console.log('fetchFile', session)
+      const fileContentDiv = document.getElementById("fileContent");
+      fileContentDiv.textContent = "";
+      const _fetch = session.info.isLoggedIn ?
+        session.fetch
+        : fetch
+
+      // Resource URL from user input (falling back to placeholder if empty).
+      const resourceUrl = resourceInput.value.trim() || resourceInput.placeholder;
+
+      try {
+        // Use the session’s fetch, which includes credentials
+        const response = await _fetch(resourceUrl);
+
+        if (!response.ok) {
+          fileContentDiv.textContent = `Cannot show file: ${response.status} ${response.statusText}`;
+          return;
+        }
+
+        // Assuming the file is text-based, display the text
+        const text = await response.text();
+        fileContentDiv.textContent = text;
+      } catch (err) {
+        fileContentDiv.textContent = `Error fetching file: ${err}`;
+      }
     }
 
 
+    document.getElementById("seeFileButton")
+    	.addEventListener('click', async () => await fetchFile())
     document.getElementById('startFedcmLogin')
       .addEventListener('click', async () => await callFedcm());
-    document.getElementById('fetch')
-      .addEventListener('click', async () => await fetchTarget());
     document.getElementById('startInruptLogin')
-      .addEventListener('click', async () => await inruptLogin(CSS_URL));
+      .addEventListener('click', async () => await inruptLogin(CSS_URL, session));
 
     (async () => {
       await handleSession()

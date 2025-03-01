@@ -3,7 +3,7 @@ import { buildAuthenticatedFetch, createDpopHeader, generateDpopKeyPair } from '
 import { Session } from '@inrupt/solid-client-authn-browser';
 import { collapseTextChangeRangesAcrossMultipleVersions } from 'typescript';
 
-export const session = new Session()
+export const InruptSession = Session
 
 
 export async function fetchRessource(url, accessToken, dpopKey) {
@@ -83,7 +83,7 @@ export async function getAccessToken(authString, opUrl) {
 
 }
 
-export async function inruptLogin(cssUrl) {
+export async function inruptLogin(cssUrl, session) {
   if (!session.info.isLoggedIn) {
     // Initiate login
     const login_response = await session.login({

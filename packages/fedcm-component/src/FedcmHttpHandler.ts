@@ -37,96 +37,7 @@ export class FedcmHttpHandler extends HttpHandler {
     this.providerFactory = providerFactory
   }
 
-  private async get_token(id: string, secret: string, dpopHeader: string) {
-    // A key pair is needed for encryption.
-    // This function from `solid-client-authn` generates such a pair for you.
-    const dpopKey = await generateDpopKeyPair();
-    // These are the ID and secret generated in the previous step.
-    // Both the ID and the secret need to be form-encoded.
-    const authString = `${encodeURIComponent(id)}:${encodeURIComponent(secret)}`;
-    // This URL can be found by looking at the "token_endpoint" field at
-    // http://localhost:3000/.well-known/openid-configuration
-    // if your server is hosted at http://localhost:3000/.
-    const tokenUrl = `${this.baseUrl}.oidc/token`;
-    try {
-      const target = tokenUrl;
-      const resp = await fetch(target, {
-        method: 'POST',
-        headers: {
-          // The header needs to be in base64 encoding.
-          authorization: `Basic ${Buffer.from(authString).toString('base64')}`,
-          'content-type': 'application/x-www-form-urlencoded',
-          dpop: dpopHeader,
-        },
-        body: 'grant_type=client_credentials&scope=webid',
-      });
-      const jresp = await resp.json();
-      this.logger.info(`FETCHING ${target} \n RESPONDED WITH \n ${jresp}`)
-      return jresp
-    } catch (error) {
-      this.logger.info(`Error in get_token: ${error}`)
-      return
-    }
-
-    // This is the Access token that will be used to do an authenticated request to the server.
-    // The JSON also contains an "expires_in" field in seconds,
-    // which you can use to know when you need request a new Access token.
-
-  }
-
-
-  private async get_client_id_secret(authorization: string, webId: string) {
-
-    // Now that we are logged in, we need to request the updated controls from the server.
-    // These will now have more values than in the previous example.
-    const indexResponse = await fetch(`${this.baseUrl}.account/`, {
-      headers: { authorization: `CSS-Account-Token ${authorization}` }
-    });
-    let { controls }: any = await indexResponse.json();
-    try {
-
-      let target = controls.account.clientCredentials;
-      // Here we request the server to generate a token on our account
-      const resp = await fetch(target, {
-        method: 'POST',
-        headers: { authorization: `CSS-Account-Token ${authorization}`, 'content-type': 'application/json' },
-        // The name field will be used when generating the ID of your token.
-        // The WebID field determines which WebID you will identify as when using the token.
-        // Only WebIDs linked to your account can be used.
-        body: JSON.stringify({ name: 'my-token', webId: webId }),
-      });
-      const jresp = await resp.json()
-      this.logger.info(`FETCHING ${target} \n RESPONDED WITH \n ${jresp}`)
-
-
-
-      // These are the identifier and secret of your token.
-      // Store the secret somewhere safe as there is no way to request it again from the server!
-      // The `resource` value can be used to delete the token at a later point in time.
-      const { id, secret }: any = jresp;
-      return { tokenId: id, secret: secret }
-
-    } catch (error) {
-      this.logger.info(`Error in get_token: ${error}`)
-      return
-    }
-
-  }
-  private async deleteToken(tokenId: string, authorization: string) {
-    const indexResponse = await fetch(`${this.baseUrl}.account/`, {
-      headers: { authorization: `CSS-Account-Token ${authorization}` }
-    });
-    let { controls }: any = await indexResponse.json();
-    const listOfTokensResp = await fetch(controls.account.clientCredentials, {
-      headers: { authorization: `CSS-Account-Token ${authorization}` }
-    })
-    const listOfTokensJson: any = await listOfTokensResp.json()
-    const tokenUrl = listOfTokensJson.clientCredentials[tokenId]
-    const delteTokenResp = await fetch(tokenUrl, {
-      method: 'DELETE',
-      headers: { authorization: `CSS-Account-Token ${authorization}` }
-    });
-  }
+ 
 
   public async handle({ request, response }: HttpHandlerInput): Promise<void> {
 
@@ -270,34 +181,6 @@ export class FedcmHttpHandler extends HttpHandler {
     options.headers = { ...defaultHeaders, ...(options.headers || {}) };
     return fetch(url, options);
   }
-  private renameCookiePath(cookieArray: Array<string>, newPath: string = '/'): Array<string> {
-    let res: Array<string> = []
-    // const setCookieHeader = pickWebIdCookie.getSetCookie();
-    // if (setCookieHeader && Array.isArray(setCookieHeader)) {
-    cookieArray.forEach((c: string) => {
-      res.push(
-        c.replace('path=/.account/', `path=${newPath}`)
-          .replace(/path=\/\.oidc\/auth\/[a-zA-Z0-9_-]+;/, `path=${newPath};`)
-      );
-    });
-    return res
-  }
-
-  // Parses a cookie header string into a key/value record.
-  private cookieParser(cookieString: string): Record<string, string> {
-    return cookieString.split('; ').reduce((acc, cookie) => {
-      const [key, value] = cookie.split('=');
-      acc[key] = value;
-      return acc;
-    }, {} as Record<string, string>);
-  }
-
-  // Helper to turn an array of cookie strings into a single header string.
-  private parseCookiesArray(cookies: string[]): string {
-    if (!cookies) return '';
-    return cookies.map(cookie => cookie.split(';')[0]).join('; ') + ';';
-  }
-
 
   // Get first OIDC interaction cookie
   private async initiateOidcInteraction(clientId: string, clientUrl: string, codeChallenge: string, state: string): Promise<any> {
@@ -442,87 +325,73 @@ export class FedcmHttpHandler extends HttpHandler {
     }
   }
 
-  // CONSENT: Uses the redirect response from the previous step to extract cookies,
-  // then calls the consent endpoint and finally performs the last fetch to retrieve the final cookies and redirect URL.
-  private async processConsent(
-    pickWebIdCookies: Array<string>,
-    cgaCookie: string,
-    authorization: string
-  ): Promise<{ consentCookies: string; finalRedirect: string }> {
-    try {
-      // Process cookies from the redirect response.
-      const cookies = this.renameCookiePath(pickWebIdCookies)
-      cookies.push(`cga-cookie=${cgaCookie}; Path=/; SameSite=Lax`);
-      cookies.push(`css-account=${authorization}; Path=/; SameSite=Lax`);
 
-      const cookiesHeader = this.parseCookiesArray(cookies);
+  private async getCode(req: string, sessionId: string): Promise<string> {
+    
+    // const r = await readableToString(request)
+    const client_id = new URLSearchParams(req).get('client_id') || ''
+    const params_raw = new URLSearchParams(req).get('params') || undefined
+    const params = params_raw ? JSON.parse(params_raw) : {}
+    const provider = await this.providerFactory.getProvider()
 
-      // TODO get url dynamically
-      const consentUrl = 'http://localhost:3000/.account/oidc/consent/';
-      const body = JSON.stringify({ remember: true });
-      const consentResponse = await fetch(consentUrl, {
-        method: 'POST',
-        headers: {
-          'Host': 'localhost:3000',
-          'Connection': 'keep-alive',
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Sec-Fetch-Site': 'same-origin',
-          'Sec-Fetch-Mode': 'cors',
-          'Sec-Fetch-Dest': 'empty',
-          'Cookie': cookiesHeader
-        } as any,
-        body,
-      });
-      if (!consentResponse.ok) {
-        throw new InternalServerError('Consent endpoint responded with an error.');
-      }
-      const consentJson = await consentResponse.json();
-      const consentLocation = (consentJson as any).location;
-      // const cookieLast = cookiesHeader.split(';').slice(4).join(';');
-      const cookieLast = cookiesHeader;
-
-
-      // LAST FETCH: Do not follow the 303 redirect so we can grab the cookies.
-      const lastFetch = await fetch(consentLocation, {
-        method: 'GET',
-        headers: {
-          'Host': 'localhost:3000',
-          'Connection': 'keep-alive',
-          'Accept': 'text/html',
-          'Sec-Fetch-Site': 'same-origin',
-          'Sec-Fetch-Mode': 'cors',
-          'Sec-Fetch-Dest': 'document',
-          'Cookie': cookieLast
-        } as any,
-        redirect: 'manual',
-        credentials: 'include'
-      });
-      const lastSetCookieHeader = (lastFetch.headers as any).getSetCookie();
-      const cookiesLastArray: string[] = lastSetCookieHeader && Array.isArray(lastSetCookieHeader) ?
-        this.renameCookiePath(lastSetCookieHeader)
-        : []
-      //TODO handle empty array case 
-
-      cookiesLastArray.push(`cga-cookie=${cgaCookie}; Path=/; SameSite=Lax`);
-      cookiesLastArray.push(`css-account=${authorization}; Path=/; SameSite=Lax`);
-
-      const cookiesHeaderLast = this.parseCookiesArray(cookiesLastArray);
-      const clientRedirect = lastFetch.headers.get('location') || '';
-      return { consentCookies: cookiesHeaderLast, finalRedirect: clientRedirect };
-    } catch (err) {
-      this.logger.error('Error during consent processing:' + err);
-      throw new InternalServerError('Consent process failed.');
-    }
+     // 1. Get the session cookie and find session 
+  // const sessionId = req.cookies['your_oidc_session_cookie_name'];
+  const session = sessionId ? await provider.Session.find(sessionId) : null;
+  if (!session || !session.accountId) {
+    //TODO
+    return ''
   }
 
-  private async getSession(accountId: string, cssAccountCookie: string, provider: any) {
-    return async (sid="") => {
-      const session = accountId ? await provider.Session.find(accountId) : null;
-      const session2 = cssAccountCookie ? await provider.Session.find(cssAccountCookie) : null;
-      const session3 = sid != '' ? await provider.Session.find(sid) : null
-      return  session || session2 || session3 
-    }
+  // 2. Determine the client (e.g., if client_id is known for this FedCM context)
+  const client = await provider.Client.find(client_id);
+
+  if (!client){
+    // TODO
+    return ''
+  }
+
+  // 3. Ensure a grant exists for this client (create one if needed, to attach scopes)
+  let grantId = session.grantIdFor(client.clientId);
+  let grant
+  if (!grantId) {
+    // grantId = session.ensureGrant(client.clientId);  // pseudo-method: create new grantId and link to session
+  // Optionally, use provider.Grant to persist allowed scopes for this grant
+    grant = new provider.Grant({ clientId: client.clientId, accountId: session.accountId });
+    grant.addOIDCScope('openid profile offline_access webid'); 
+    grantId = await grant.save();
+    // (The library auto-saves the grant when issuing tokens if not done explicitly)
+  }
+  // grantId = session.grantIdFor(client.clientId)
+
+  if( !client.redirectUris || client.redirectUris.length < 1){
+    // TODO
+    return ''
+  }
+
+  // 4. Create an AuthorizationCode instance with necessary details
+  const AuthorizationCode = provider.AuthorizationCode;  // class access
+  const code = new AuthorizationCode({
+    accountId: session.accountId,
+    client,
+    redirectUri: client.redirectUris[0],      // or a specific one intended for this flow
+    // scope: 'openid profile offline_access webid',  // TODO scopes to allow; make sure these were consented
+    scope: 'webid openid profile offline_access',
+    grantId: grantId,
+    gty: 'authorization_code', // TODO
+    // If PKCE is required by this client or desired, you would include codeChallenge fields:
+    codeChallenge: params.code_challenge,
+    codeChallengeMethod: params.code_challenge_method,
+    resource: 'solid', // required to return an access token in a JWT format
+    // Other fields like acr, amr, authTime, nonce can be set if applicable:
+    // acr: session.acr, amr: session.amr, authTime: session.authTime,
+    // nonce: (if this code is intended for an OpenID ID Token and nonce was provided by RP)
+  });
+  // 5. Save the code to generate the value
+  const codeValue = await code.save();
+
+  // 6. Respond to FedCM request with the code (e.g., as JSON)
+  return codeValue
+
   }
 
 
@@ -626,31 +495,15 @@ export class FedcmHttpHandler extends HttpHandler {
       oidcInteraction
     );
 
-
-    // ----- CONSENT -----
-    const { consentCookies, finalRedirect } = await this.processConsent(
-      pickWebIdCookies,
-      cgaCookie,
-      authorization
-    );
-
-
-    const accountLinks = await this.webIdStore.findLinks(accountId)
-    const webId = accountLinks[0].webId // TODO: handle mutiple webId
-
-
-    // TODO re-use previous token instead of creating a new
-    const { tokenId, secret }: any = await this.get_client_id_secret(cssAccountCookie, webId)
-    const authString = `${encodeURIComponent(tokenId)}:${encodeURIComponent(secret)}`;
-
-    // const { access_token: accessToken }: any = await this.get_token(tokenId, secret, dpopHeader)
-    // seems that we can safely delete the tokenId once we have the access token
-    // then we don't poluate the account with an incremental number of access tokens
-    // await this.deleteToken(tokenId, cssAccountCookie)
+    const _session = parse(pickWebIdCookies.join('; '))['_session']
+    const code = await this.getCode(r, _session)
+    // TODO 
+    const codeUrl = `http://localhost:6080/?code=${code}&state=${params.state}&iss=${encodeURIComponent("http://localhost:3000/")}`
 
     response.writeHead(200, { 'Content-Type': 'application/json' })
     // response.end(JSON.stringify({ 'token': authString}))
-    response.end(JSON.stringify({ 'token': finalRedirect  }))
+    // response.end(JSON.stringify({ 'token': finalRedirect,  }))
+    response.end(JSON.stringify({ 'token': codeUrl,  }))
   }
 
 
