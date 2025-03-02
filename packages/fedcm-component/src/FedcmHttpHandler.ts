@@ -37,7 +37,7 @@ export class FedcmHttpHandler extends HttpHandler {
     this.providerFactory = providerFactory
   }
 
- 
+
 
   public async handle({ request, response }: HttpHandlerInput): Promise<void> {
 
@@ -255,10 +255,10 @@ export class FedcmHttpHandler extends HttpHandler {
   // PICK-WEBID: Calls the pick-webid endpoint, updates the OIDC interaction with the picked WebID,
   // and retrieves the redirect response to be used in the consent flow.
   private async pickWebIdAndFinishInteraction(
-    request: HttpRequest,
+    originalCookie: string,
     authorization: string,
     interaction: Interaction | undefined
-  ): Promise<{ pickWebIdCookies: Array<string> }> {
+  ): Promise<string> {
     if (!interaction) {
       throw new BadRequestHttpError('No active OIDC interaction available.');
     }
@@ -266,9 +266,6 @@ export class FedcmHttpHandler extends HttpHandler {
       // TODO get url dynamically
       // TODO do not use fetch, import code from pick-webid
       const pickWebIdEndpoint = 'http://localhost:3000/.account/oidc/pick-webid/';
-      let originalCookie = request.headers.cookie || ''
-      originalCookie += `; css-account=${authorization}`;
-      originalCookie = originalCookie.split('; ').slice(1).join('; ')
 
       const webIdResponse = await this.fetchWithDefaults(pickWebIdEndpoint, {
         method: 'GET',
@@ -298,99 +295,104 @@ export class FedcmHttpHandler extends HttpHandler {
 
       const location = await finishInteraction(interaction, { login }, true);
       // TODO: try to forge request and send it to this.oidcHttpHandler
-      const redirectResponse = await fetch(location, {
-        method: 'GET',
-        headers: {
-          'Host': 'localhost:3000',
-          'Connection': 'keep-alive',
-          'Accept': 'text/html',
-          'Sec-Fetch-Site': 'same-origin',
-          'Sec-Fetch-Mode': 'cors',
-          'Sec-Fetch-Dest': 'empty',
-          'Cookie': originalCookie
-        } as any,
-        redirect: 'manual',
-        credentials: 'include'
-      });
-
-      const pickWebIdCookies = (redirectResponse.headers as any).getSetCookie();
-      if (!(pickWebIdCookies && Array.isArray(pickWebIdCookies))) {
-        // assert cookie error
-      }
-
-      return { pickWebIdCookies };
+      return location
     } catch (err) {
       this.logger.error('Error during pick-webid processing:' + err);
       throw new InternalServerError('Pick-webid process failed.');
     }
   }
 
+  private async getSessionCookie(location: string, cookies: string): Promise<string> {
+    const redirectResponse = await fetch(location, {
+      method: 'GET',
+      headers: {
+        'Host': 'localhost:3000',
+        'Connection': 'keep-alive',
+        'Accept': 'text/html',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Dest': 'empty',
+        'Cookie': cookies,
+      } as any,
+      redirect: 'manual',
+      credentials: 'include'
+    });
+
+    const pickWebIdCookies = (redirectResponse.headers as any).getSetCookie();
+    if (!(pickWebIdCookies && Array.isArray(pickWebIdCookies))) {
+      // assert cookie error
+    }
+
+    const _session = parse(pickWebIdCookies.join('; '))['_session']
+    return _session
+  }
+
 
   private async getCode(req: string, sessionId: string): Promise<string> {
-    
+
     // const r = await readableToString(request)
     const client_id = new URLSearchParams(req).get('client_id') || ''
     const params_raw = new URLSearchParams(req).get('params') || undefined
     const params = params_raw ? JSON.parse(params_raw) : {}
     const provider = await this.providerFactory.getProvider()
 
-     // 1. Get the session cookie and find session 
-  // const sessionId = req.cookies['your_oidc_session_cookie_name'];
-  const session = sessionId ? await provider.Session.find(sessionId) : null;
-  if (!session || !session.accountId) {
-    //TODO
-    return ''
-  }
+    // 1. Get the session cookie and find session 
+    // const sessionId = req.cookies['your_oidc_session_cookie_name'];
+    const session = sessionId ? await provider.Session.find(sessionId) : null;
+    if (!session || !session.accountId) {
+      //TODO
+      return ''
+    }
 
-  // 2. Determine the client (e.g., if client_id is known for this FedCM context)
-  const client = await provider.Client.find(client_id);
+    // 2. Determine the client (e.g., if client_id is known for this FedCM context)
+    const client = await provider.Client.find(client_id);
 
-  if (!client){
-    // TODO
-    return ''
-  }
+    if (!client) {
+      // TODO
+      return ''
+    }
 
-  // 3. Ensure a grant exists for this client (create one if needed, to attach scopes)
-  let grantId = session.grantIdFor(client.clientId);
-  let grant
-  if (!grantId) {
-    // grantId = session.ensureGrant(client.clientId);  // pseudo-method: create new grantId and link to session
-  // Optionally, use provider.Grant to persist allowed scopes for this grant
-    grant = new provider.Grant({ clientId: client.clientId, accountId: session.accountId });
-    grant.addOIDCScope('openid profile offline_access webid'); 
-    grantId = await grant.save();
-    // (The library auto-saves the grant when issuing tokens if not done explicitly)
-  }
-  // grantId = session.grantIdFor(client.clientId)
+    // 3. Ensure a grant exists for this client (create one if needed, to attach scopes)
+    let grantId = session.grantIdFor(client.clientId);
+    let grant
+    if (!grantId) {
+      // grantId = session.ensureGrant(client.clientId);  // pseudo-method: create new grantId and link to session
+      // Optionally, use provider.Grant to persist allowed scopes for this grant
+      grant = new provider.Grant({ clientId: client.clientId, accountId: session.accountId });
+      grant.addOIDCScope('openid profile offline_access webid');
+      grantId = await grant.save();
+      // (The library auto-saves the grant when issuing tokens if not done explicitly)
+    }
+    // grantId = session.grantIdFor(client.clientId)
 
-  if( !client.redirectUris || client.redirectUris.length < 1){
-    // TODO
-    return ''
-  }
+    if (!client.redirectUris || client.redirectUris.length < 1) {
+      // TODO
+      return ''
+    }
 
-  // 4. Create an AuthorizationCode instance with necessary details
-  const AuthorizationCode = provider.AuthorizationCode;  // class access
-  const code = new AuthorizationCode({
-    accountId: session.accountId,
-    client,
-    redirectUri: client.redirectUris[0],      // or a specific one intended for this flow
-    // scope: 'openid profile offline_access webid',  // TODO scopes to allow; make sure these were consented
-    scope: 'webid openid profile offline_access',
-    grantId: grantId,
-    gty: 'authorization_code', // TODO
-    // If PKCE is required by this client or desired, you would include codeChallenge fields:
-    codeChallenge: params.code_challenge,
-    codeChallengeMethod: params.code_challenge_method,
-    resource: 'solid', // required to return an access token in a JWT format
-    // Other fields like acr, amr, authTime, nonce can be set if applicable:
-    // acr: session.acr, amr: session.amr, authTime: session.authTime,
-    // nonce: (if this code is intended for an OpenID ID Token and nonce was provided by RP)
-  });
-  // 5. Save the code to generate the value
-  const codeValue = await code.save();
+    // 4. Create an AuthorizationCode instance with necessary details
+    const AuthorizationCode = provider.AuthorizationCode;  // class access
+    const code = new AuthorizationCode({
+      accountId: session.accountId,
+      client,
+      redirectUri: client.redirectUris[0],      // or a specific one intended for this flow
+      // scope: 'openid profile offline_access webid',  // TODO scopes to allow; make sure these were consented
+      scope: 'webid openid profile offline_access',
+      grantId: grantId,
+      gty: 'authorization_code', // TODO
+      // If PKCE is required by this client or desired, you would include codeChallenge fields:
+      codeChallenge: params.code_challenge,
+      codeChallengeMethod: params.code_challenge_method,
+      resource: 'solid', // required to return an access token in a JWT format
+      // Other fields like acr, amr, authTime, nonce can be set if applicable:
+      // acr: session.acr, amr: session.amr, authTime: session.authTime,
+      // nonce: (if this code is intended for an OpenID ID Token and nonce was provided by RP)
+    });
+    // 5. Save the code to generate the value
+    const codeValue = await code.save();
 
-  // 6. Respond to FedCM request with the code (e.g., as JSON)
-  return codeValue
+    // 6. Respond to FedCM request with the code (e.g., as JSON)
+    return codeValue
 
   }
 
@@ -489,13 +491,18 @@ export class FedcmHttpHandler extends HttpHandler {
     const authorization = await this.resolveLogin(accountId, oidcInteraction);
 
     // ----- PICK-WEBID -----
-    const { pickWebIdCookies } = await this.pickWebIdAndFinishInteraction(
-      request,
+
+    let originalCookie = request.headers.cookie || ''
+    originalCookie += `; css-account=${authorization}`;
+    originalCookie = originalCookie.split('; ').slice(1).join('; ')
+    const location = await this.pickWebIdAndFinishInteraction(
+      originalCookie,
       authorization,
       oidcInteraction
     );
+    const _session = await this.getSessionCookie(location, originalCookie)
 
-    const _session = parse(pickWebIdCookies.join('; '))['_session']
+
     const code = await this.getCode(r, _session)
     // TODO 
     const codeUrl = `http://localhost:6080/?code=${code}&state=${params.state}&iss=${encodeURIComponent("http://localhost:3000/")}`
@@ -503,7 +510,7 @@ export class FedcmHttpHandler extends HttpHandler {
     response.writeHead(200, { 'Content-Type': 'application/json' })
     // response.end(JSON.stringify({ 'token': authString}))
     // response.end(JSON.stringify({ 'token': finalRedirect,  }))
-    response.end(JSON.stringify({ 'token': codeUrl,  }))
+    response.end(JSON.stringify({ 'token': codeUrl, }))
   }
 
 
