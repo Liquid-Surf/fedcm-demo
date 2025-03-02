@@ -8,7 +8,7 @@ import { generateDpopKeyPair } from '@inrupt/solid-client-authn-core';
 import { getLoggerFor } from '@solid/community-server';
 import { parse } from 'cookie'
 import { readableToString } from '@solid/community-server';
-import { InteractionResults } from '@solid/community-server/templates/types/oidc-provider';
+import Provider, { InteractionResults } from '@solid/community-server/templates/types/oidc-provider';
 
 /**
  * HTTP handler that handle all FedCM requests.
@@ -222,13 +222,16 @@ export class FedcmHttpHandler extends HttpHandler {
   }
 
   // Creates the OIDC interaction if available.
-  private async getOidcInteraction({ request, response }: HttpHandlerInput, initiateOidcInteractionCookies: Array<string>): Promise<Interaction | undefined> {
+  private async getOidcInteraction(
+    { request, response }: HttpHandlerInput,
+     initiateOidcInteractionCookies: Array<string>,
+     provider: Provider
+     ): Promise<Interaction | undefined> {
     let req_with_cookie = request
     req_with_cookie.headers.cookie += '; '
     req_with_cookie.headers.cookie += initiateOidcInteractionCookies.join('; ')
 
     try {
-      const provider = await this.providerFactory.getProvider();
       // Keeping this here, it create an error on oidc-provider
       // will try to reproduce it
       // request.headers.cookie += ';_interaction=mWJLy75-lL8EhhJpy7lpu; _interaction.sig=QfxSPQxo6gYTyfT3TspY6JTt1v0;css-account=c5dfed2a-cfc2-4862-b94e-b791cb1d7c89'
@@ -257,7 +260,8 @@ export class FedcmHttpHandler extends HttpHandler {
   private async pickWebIdAndFinishInteraction(
     originalCookie: string,
     authorization: string,
-    interaction: Interaction | undefined
+    interaction: Interaction | undefined,
+    provider: Provider
   ): Promise<string> {
     if (!interaction) {
       throw new BadRequestHttpError('No active OIDC interaction available.');
@@ -284,7 +288,6 @@ export class FedcmHttpHandler extends HttpHandler {
         throw new InternalServerError('No webId for this account');
       const webId = webIdJson.webIds[0];
 
-      const provider = await this.providerFactory.getProvider();
       await forgetWebId(provider, interaction);
 
       const login: InteractionResults['login'] = {
@@ -328,13 +331,12 @@ export class FedcmHttpHandler extends HttpHandler {
   }
 
 
-  private async getCode(req: string, sessionId: string): Promise<string> {
+  private async getCode(req: string, sessionId: string, provider: Provider): Promise<string> {
 
     // const r = await readableToString(request)
     const client_id = new URLSearchParams(req).get('client_id') || ''
     const params_raw = new URLSearchParams(req).get('params') || undefined
     const params = params_raw ? JSON.parse(params_raw) : {}
-    const provider = await this.providerFactory.getProvider()
 
     // 1. Get the session cookie and find session 
     // const sessionId = req.cookies['your_oidc_session_cookie_name'];
@@ -414,6 +416,9 @@ export class FedcmHttpHandler extends HttpHandler {
     const nonce = new URLSearchParams(r).get('nonce') || undefined
     const params_raw = new URLSearchParams(r).get('params') || undefined
     const params = params_raw ? JSON.parse(params_raw) : {}
+    const provider = await this.providerFactory.getProvider()
+
+
 
 
     if (!client_id) {
@@ -486,24 +491,27 @@ export class FedcmHttpHandler extends HttpHandler {
         params.code_challenge,
         params.state)
     let cgaCookie = '123';
-    const oidcInteraction = await this.getOidcInteraction({ request, response }, initiateOidcInteractionCookies);
+    const oidcInteraction = await this.getOidcInteraction({ request, response }, initiateOidcInteractionCookies, provider);
 
     const authorization = await this.resolveLogin(accountId, oidcInteraction);
 
     // ----- PICK-WEBID -----
 
     let originalCookie = request.headers.cookie || ''
+    // updating cookies with new authorization
     originalCookie += `; css-account=${authorization}`;
-    originalCookie = originalCookie.split('; ').slice(1).join('; ')
+    originalCookie = originalCookie.split('; ').slice(1).join('; ') 
     const location = await this.pickWebIdAndFinishInteraction(
       originalCookie,
       authorization,
-      oidcInteraction
+      oidcInteraction, 
+      provider
     );
     const _session = await this.getSessionCookie(location, originalCookie)
 
 
-    const code = await this.getCode(r, _session)
+
+    const code = await this.getCode(r, _session, provider)
     // TODO 
     const codeUrl = `http://localhost:6080/?code=${code}&state=${params.state}&iss=${encodeURIComponent("http://localhost:3000/")}`
 
