@@ -298,53 +298,24 @@ export class FedcmHttpHandler extends HttpHandler {
 
       const location = await finishInteraction(interaction, { login }, true);
       // TODO: try to forge request and send it to this.oidcHttpHandler
-      return location
+      return webId
     } catch (err) {
       this.logger.error('Error during pick-webid processing:' + err);
       throw new InternalServerError('Pick-webid process failed.');
     }
   }
 
-  private async getSessionCookie(location: string, cookies: string): Promise<string> {
-    const redirectResponse = await fetch(location, {
-      method: 'GET',
-      headers: {
-        'Host': 'localhost:3000',
-        'Connection': 'keep-alive',
-        'Accept': 'text/html',
-        'Sec-Fetch-Site': 'same-origin',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Dest': 'empty',
-        'Cookie': cookies,
-      } as any,
-      redirect: 'manual',
-      credentials: 'include'
-    });
-
-    const pickWebIdCookies = (redirectResponse.headers as any).getSetCookie();
-    if (!(pickWebIdCookies && Array.isArray(pickWebIdCookies))) {
-      // assert cookie error
-    }
-
-    const _session = parse(pickWebIdCookies.join('; '))['_session']
-    return _session
-  }
 
 
-  private async getCode(req: string, sessionId: string, provider: Provider): Promise<string> {
+
+  private async getCode(req: string, webId: string, provider: Provider): Promise<string> {
 
     // const r = await readableToString(request)
     const client_id = new URLSearchParams(req).get('client_id') || ''
     const params_raw = new URLSearchParams(req).get('params') || undefined
     const params = params_raw ? JSON.parse(params_raw) : {}
 
-    // 1. Get the session cookie and find session 
-    // const sessionId = req.cookies['your_oidc_session_cookie_name'];
-    const session = sessionId ? await provider.Session.find(sessionId) : null;
-    if (!session || !session.accountId) {
-      //TODO
-      return ''
-    }
+
 
     // 2. Determine the client (e.g., if client_id is known for this FedCM context)
     const client = await provider.Client.find(client_id);
@@ -355,12 +326,14 @@ export class FedcmHttpHandler extends HttpHandler {
     }
 
     // 3. Ensure a grant exists for this client (create one if needed, to attach scopes)
-    let grantId = session.grantIdFor(client.clientId);
+    // let grantId = session.grantIdFor(client.clientId);
+    let grantId
     let grant
     if (!grantId) {
       // grantId = session.ensureGrant(client.clientId);  // pseudo-method: create new grantId and link to session
       // Optionally, use provider.Grant to persist allowed scopes for this grant
-      grant = new provider.Grant({ clientId: client.clientId, accountId: session.accountId });
+      // accountId in CSS != accountId for oidc-provider, oidc-provider uses webId as accountId
+      grant = new provider.Grant({ clientId: client.clientId, accountId: webId });
       grant.addOIDCScope('openid profile offline_access webid');
       grantId = await grant.save();
       // (The library auto-saves the grant when issuing tokens if not done explicitly)
@@ -375,7 +348,7 @@ export class FedcmHttpHandler extends HttpHandler {
     // 4. Create an AuthorizationCode instance with necessary details
     const AuthorizationCode = provider.AuthorizationCode;  // class access
     const code = new AuthorizationCode({
-      accountId: session.accountId,
+      accountId: webId,
       client,
       redirectUri: client.redirectUris[0],      // or a specific one intended for this flow
       // scope: 'openid profile offline_access webid',  // TODO scopes to allow; make sure these were consented
@@ -501,17 +474,15 @@ export class FedcmHttpHandler extends HttpHandler {
     // updating cookies with new authorization
     originalCookie += `; css-account=${authorization}`;
     originalCookie = originalCookie.split('; ').slice(1).join('; ') 
-    const location = await this.pickWebIdAndFinishInteraction(
+    const webId = await this.pickWebIdAndFinishInteraction(
       originalCookie,
       authorization,
       oidcInteraction, 
       provider
     );
-    const _session = await this.getSessionCookie(location, originalCookie)
 
 
-
-    const code = await this.getCode(r, _session, provider)
+    const code = await this.getCode(r, webId, provider)
     // TODO 
     const codeUrl = `http://localhost:6080/?code=${code}&state=${params.state}&iss=${encodeURIComponent("http://localhost:3000/")}`
 
