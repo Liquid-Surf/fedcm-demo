@@ -1,14 +1,13 @@
-import { BadRequestHttpError, CookieStore, finishInteraction, HttpRequest, HttpResponse, InternalServerError, ProviderFactory } from '@solid/community-server';
-import { Interaction } from '@solid/community-server';
-import { forgetWebId } from '@solid/community-server';
+import { BadRequestHttpError, HttpRequest, InternalServerError } from '@solid/community-server';
+import { CookieStore } from '@solid/community-server';
+import { ProviderFactory } from '@solid/community-server';
 import { HttpHandler } from '@solid/community-server';
 import type { HttpHandlerInput } from '@solid/community-server';
 import { WebIdStore } from '@solid/community-server';
-import { generateDpopKeyPair } from '@inrupt/solid-client-authn-core';
 import { getLoggerFor } from '@solid/community-server';
 import { parse } from 'cookie'
 import { readableToString } from '@solid/community-server';
-import Provider, { InteractionResults } from '@solid/community-server/templates/types/oidc-provider';
+import Provider from '@solid/community-server/templates/types/oidc-provider';
 
 /**
  * HTTP handler that handle all FedCM requests.
@@ -67,7 +66,7 @@ export class FedcmHttpHandler extends HttpHandler {
 
   }
 
-
+  private removeLastTraillingSlash(url: string): string { return url.slice(-1) == '/' ? url.slice(0, -1) : url}
   private async handleWebIdentity({ request, response }: HttpHandlerInput): Promise<void> {
     // 3.1
     // https://fedidcg.github.io/FedCM/#idp-api-well-known
@@ -136,18 +135,36 @@ export class FedcmHttpHandler extends HttpHandler {
 
 
     const accountLinks = await this.webIdStore.findLinks(accountId)
-    const webId = accountLinks[0].webId || '' // TODO multi webId account
 
+    if (!accountLinks || accountLinks.length < 1 || !accountLinks[0].webId) {
+      throw new InternalServerError("No account linked to this accountId. Does this account have a webId?")
+    }
+    if (accountLinks.length > 1) {
+      throw new InternalServerError("With the current implementation, your CSS account should have one and only one WebId")
+    }
 
+    const webId = accountLinks[0].webId
+
+    // TODO get name, email etc from profile
+    // import { ResourceStore }from  '@solid/community-server'
+    // import { RepresentationMetadata }from  '@solid/community-server'
+    // import { DataFactory }from  'n3'
+    // import { namedNode }from  DataFactory;
+
+    // async function getResource(internalUrl, resourceStore) {
+    // const metadata = new RepresentationMetadata(namedNode(internalUrl));
+    // const representation = await resourceStore.getRepresentation({ path: internalUrl }, { type: { 'text/turtle': 1 } }, metadata);
+    // const data = representation.data;
+    // }
     const accounts = {
       accounts: [
         {
           id: accountId,
-          name: 'John', // TODO fetch webId's vcard
-          given_name: 'Doe', // TODO fetch webId's vcard
-          // email: 'a@a.a', // TODO get user's email ?
+          name: '...',
+          given_name: '...',
+          // email: 'a@a.a', 
           email: webId, // giving the webId instead of an email
-          picture: 'https://doodleipsum.com/150x150/avatar-2?i=f7de8aff0b8c3f4bc758e106d80d071e', // TODO 
+          picture: 'https://doodleipsum.com/150x150/avatar-2?i=f7de8aff0b8c3f4bc758e106d80d071e',
           approved_clients: []
         }
       ]
@@ -171,22 +188,6 @@ export class FedcmHttpHandler extends HttpHandler {
     response.end(JSON.stringify(metadata));
   }
 
-
-
-
-  // RESOLVELOGIN: Generates an authorization cookie and (if an OIDC interaction exists)
-  // finishes the interaction to update policies.
-  private async resolveLogin(accountId: string): Promise<string> {
-    // TODO just put part of the resolveLogin code, might need to recheck that part
-    let authorization: string;
-    authorization = await this.cookieStore.generate(accountId);
-    return authorization;
-  }
-
-
-
-
-
   private async getCode(req: string, webId: string, provider: Provider): Promise<string> {
 
     // const r = await readableToString(request)
@@ -201,7 +202,6 @@ export class FedcmHttpHandler extends HttpHandler {
 
     // 2. Determine the client (e.g., if client_id is known for this FedCM context)
     const client = await provider.Client.find(client_id);
-
     if (!client) {
       // TODO
       return ''
@@ -254,6 +254,27 @@ export class FedcmHttpHandler extends HttpHandler {
   }
 
 
+  private async forgeRedirectUrl(request: HttpRequest, client_id: string, code: string, state: string, provider: Provider): Promise<string>{
+    const client = await provider.Client.find(client_id)
+    const allowed_uris = client?.redirectUris?.map(url => this.removeLastTraillingSlash(url))
+
+    // TODO: SECURITY: is this enough checks ? 
+    // does it have implication if a user alter a redirect_uri, or the origin of the request ? 
+
+    if (!allowed_uris){
+      throw new InternalServerError("Client doesn't have redirectUris")
+    }
+    if (!request.headers.origin){
+      throw new BadRequestHttpError("No origin found in the request's header")
+    }
+    const origin = this.removeLastTraillingSlash(request.headers?.origin) 
+    if (allowed_uris?.indexOf(origin) < 0){
+      throw new BadRequestHttpError("The origin of the request do not match any allowed URI of the OIDC client.")
+    }
+
+    return `${origin}/?code=${code}&state=${state}&iss=${encodeURIComponent(this.baseUrl)}`
+  }
+
   private async handleToken({ request, response }: HttpHandlerInput): Promise<void> {
     // 3.5
     // https://fedidcg.github.io/FedCM/#idp-api-id-assertion-endpoint
@@ -269,13 +290,13 @@ export class FedcmHttpHandler extends HttpHandler {
     const r = await readableToString(request)
     // TODO
     const client_id = new URLSearchParams(r).get('client_id') || ''
-    const nonce = new URLSearchParams(r).get('nonce') || undefined
     const params_raw = new URLSearchParams(r).get('params') || undefined
     const params = params_raw ? JSON.parse(params_raw) : {}
     const provider = await this.providerFactory.getProvider()
 
-
-
+    if (!params.state) {
+      throw new BadRequestHttpError("missing `state` value from params.")
+    }
 
     if (!client_id) {
       const error_msg = 'client_id missing from the request\'s body.'
@@ -284,19 +305,6 @@ export class FedcmHttpHandler extends HttpHandler {
       response.end(JSON.stringify({ 'error': error_msg }))
       return
     }
-
-    // if (!nonce) {
-    //   const error_msg = 'Nonce missing. To make FedCM work with Solid-OIDC, you need to pass the DPoP Header through the nonce value in the request.'
-    //   this.logger.info(error_msg)
-    //   response.writeHead(400, { 'Content-Type': 'application/json' })
-    //   response.end(JSON.stringify({ 'error': error_msg }))
-    //   return
-    // }
-
-    // const dpopHeader = nonce // This is a hack since FedCM doesn't support DPoP Header, 
-    // we pass it through the nonce, since its an optional feature of FedCM
-
-
 
     const cookies = parse(request.headers.cookie || '')
 
@@ -337,33 +345,25 @@ export class FedcmHttpHandler extends HttpHandler {
       return
     }
 
-
-    // ------ GET AUTHZ CODE ------ //
-
-    const oidcInteraction = new provider.Interaction()
-    const authorization = await this.resolveLogin(accountId);
-
-
-    const accountLinks = await this.webIdStore.findLinks(accountId)
-
-
     // ----- PICK-WEBID -----
+    const accountLinks = await this.webIdStore.findLinks(accountId)
     const webId = accountLinks[0].webId || '' // TODO multi webId account
 
 
-      // We need to explicitly forget the WebID from the session or the library won't allow us to update the value
-      // TODO: seems that this only affect the interaction and can be safely removed. 
-      // should we remove those stuff from the session ? 
-      // await forgetWebId(await this.providerFactory.getProvider(), oidcInteraction);
-
+    // We need to explicitly forget the WebID from the session or the library won't allow us to update the value
+    // TODO: seems that this only affect the interaction and can be safely removed. 
+    // should we remove those stuff from the session ? 
+    // await forgetWebId(await this.providerFactory.getProvider(), oidcInteraction);
 
     const code = await this.getCode(r, webId, provider)
-    // TODO 
-    const codeUrl = `http://localhost:6080/?code=${code}&state=${params.state}&iss=${encodeURIComponent("http://localhost:3000/")}`
+    // We use a url as a returned value for now because this is what needs 
+    // inrupt's authn library  and fedcm only support string for the token value.
+    // So this is more handy. 
+    // However in the future we might want to return code, state, and iss as a json and forge
+    // the url in the client side. 
+    const codeUrl = await this.forgeRedirectUrl(request, client_id, code, params.state, provider)
 
     response.writeHead(200, { 'Content-Type': 'application/json' })
-    // response.end(JSON.stringify({ 'token': authString}))
-    // response.end(JSON.stringify({ 'token': finalRedirect,  }))
     response.end(JSON.stringify({ 'token': codeUrl, }))
   }
 
