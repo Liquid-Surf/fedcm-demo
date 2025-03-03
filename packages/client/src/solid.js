@@ -1,167 +1,154 @@
 
-import { Session } from '@inrupt/solid-client-authn-browser';
-export const InruptSession = Session
+import { Session as InruptSession} from '@inrupt/solid-client-authn-browser';
+
+// Initialize Inrupt session
+const session = new InruptSession();
+
+// Demo configuration constant
+const CSS_URL = 'http://localhost:3000/';
+
+const resourceInput = document.getElementById('resourceInput');
+const cssUrlInput = document.getElementById('cssurl');
+const accountLink = document.getElementById('accountlink');
+const loginStatusDiv = document.getElementById('loginstatus');
+const redirectUrl = document.getElementById('redirect_url')
+const resourceContentDiv = document.getElementById('resourceContent');
+
+const fetchResourceButton = document.getElementById("fetchResource")
+const loginButton = document.getElementById("startInruptLogin")
+
+// Set initial values in the UI
+resourceInput.value = `${CSS_URL}`;
+cssUrlInput.value = CSS_URL;
+accountLink.href = `${CSS_URL}.account/`;
 
 
-// export async function fetchRessource(url, accessToken, dpopKey) {
-//   if (dpopKey) {
-//     const authFetch = await buildAuthenticatedFetch(accessToken, { dpopKey })
-//     const resp = await authFetch(url)
-//     const body = await resp.text()
-//     console.log("auth fetch")
-//     console.log(body)
-//     return body
-//   } else {
-//     const resp = await fetch(url)
-//     console.log("resp", resp)
-//     return await resp.text()
-//   }
-// }
 
-// export function extractWebID(jwt) {
-//   const parts = jwt.split('.');
-//   if (parts.length !== 3) {
-//     throw new Error('Invalid JWT: The token must consist of three parts.');
-//   }
-//   const payload = parts[1];
+/**
+ * Fetch and display a resource.
+ */
+const fetchResource = async () => {
+  console.log("Fetching file using session:", session);
+  resourceContentDiv.textContent = "";
 
-//   // Decode the payload from base64-url to a JSON string
-//   const decodedPayload = atob(payload.replace(/_/g, '/').replace(/-/g, '+'));
-//   const payloadObj = JSON.parse(decodedPayload);
+  const _fetch = session.info.isLoggedIn ? session.fetch : fetch;
+  const resourceUrl =
+    resourceInput.value.trim() || resourceInput.placeholder;
 
-//   return payloadObj.webid;
-// }
+  try {
+    const response = await _fetch(resourceUrl);
 
-// export async function getAccessToken(authString, opUrl) {
-//   // A key pair is needed for encryption.
-//   // This function from `solid-client-authn` generates such a pair for you.
-//   // const dpopKey = await generateDpopKeyPair();
+    if (!response.ok) {
+      resourceContentDiv.textContent = `Cannot show file: ${response.status} ${response.statusText}`;
+      return;
+    }
 
-//   // These are the ID and secret generated in the previous step.
-//   // Both the ID and the secret need to be form-encoded.
-//   // const authString = `${encodeURIComponent(id)}:${encodeURIComponent(secret)}`;
-//   // This URL can be found by looking at the "token_endpoint" field at
-//   // http://localhost:3000/.well-known/openid-configuration
-//   // if your server is hosted at http://localhost:3000/.
-//   const tokenUrl = `${opUrl}.oidc/token`;
-//   console.log('tokenUrl', tokenUrl)
-//   const dpopKey = await generateDpopKeyPair();
-//   const dpopHeader = await createDpopHeader(tokenUrl, 'POST', dpopKey);
-//   console.log('dpopKey', dpopKey)
-//   console.log('dpopHeader', dpopHeader)
-//   const authString64 = btoa(authString)
-//   console.log('authString', authString)
-//   console.log(authString64)
-//   try {
-//     const target = tokenUrl;
-//     const resp = await fetch(target, {
-//       method: 'POST',
-//       headers: {
-//         // The header needs to be in base64 encoding.
-//         authorization: `Basic ${authString64}`,
-//         'content-type': 'application/x-www-form-urlencoded',
-//         dpop: dpopHeader,
-//       },
-//       body: 'grant_type=client_credentials&scope=webid',
-//     });
-//     const jresp = await resp.json();
-//     console.log(`fetching ${target} and got`, jresp)
-//     const { access_token: accessToken } = jresp
-//     console.log('result', { accessToken, dpopKey })
-//     return { accessToken, dpopKey }
-//   } catch (error) {
-//     console.log(`Error in getAccessToken: ${error}`)
-//     return
-//   }
+    // Display the text content of the resource
+    const text = await response.text();
+    resourceContentDiv.textContent = text;
+  } catch (err) {
+    resourceContentDiv.textContent = `Error fetching file: ${err}`;
+  }
+};
 
-//   // This is the Access token that will be used to do an authenticated request to the server.
-//   // The JSON also contains an "expires_in" field in seconds,
-//   // which you can use to know when you need request a new Access token.
+/**
+ * Initiate Inrupt login using Fedcm if the user is not already logged in.
+ * @param {string} cssUrl - The CSS base URL.
+ * @param {object} session - The Inrupt session object.
+ */
+async function inruptLoginWithFedcm(cssUrl, session) {
+  if (!session.info.isLoggedIn) {
+    await session.login({
+      oidcIssuer: cssUrl,
+      redirectUrl: window.location.href,
+      clientName: "Solid Demo App",
+      prompt: "consent",
+      // this has nothing to do with handleRedirectIncoming
+      // here we override the default redirect behaviour
+      handleRedirect: async (url) => triggerFedcmLogin(url)
+    });
+  }
+}
 
-// }
 
-// export async function inruptLogin(cssUrl, session) {
-//   if (!session.info.isLoggedIn) {
-//     // Initiate login
-//     const login_response = await session.login({
-//       // clientId: `${window.location.href}clientid`,
-//       oidcIssuer: cssUrl,
-//       redirectUrl: window.location.href,
-//       clientName: "Solid Demo App",
-//       prompt: "consent",
-//       "handleRedirect": async (url) => {
-//         try {
-//           console.log("handle redirect ur ", url)
-//           const urlObj = new URL(url);
-//           const params = Object.fromEntries(urlObj.searchParams.entries());
-//           console.log("PARAMS", params)
-//           const token = await startFedcmLogin(params)
-//           console.log("TOKEN", token)
-//           // window.location = token.token 
-//           // const res = await session.handleIncomingRedirect(token.token);
-//           // console.log("handling redirect res", res)
-//           // if (session.info.isLoggedIn) {
-//           //   console.log(`User is logged in with WebID: ${session.info.webId}`);
-//           //   console.log(session.info);
-//           // } else {
-//           //   console.log('not logged in..')
-//           // }
-//         } catch (err) {
-//           console.log("got an error during fedcm loggin..", err)
-//         }
+/**
+      * Trigger FedCM login process using parameters from the redirect URL.
+      * @param {string} url - The redirect URL containing FedCM parameters, returned by CSS FedCMHandler
+      */
+const triggerFedcmLogin = async (url) => {
+  try {
+    // parsing the params ( code_challenge, state etc.. ) from the URL 
+    // given by inrupt login function
+    console.log("Handling redirect URL:", url);
+    const urlObj = new URL(url);
+    const params = Object.fromEntries(urlObj.searchParams.entries());
+    console.log("Parsed parameters:", params);
 
-//       },
-//     });
-//     console.log("login_response", login_response)
-//   }
-//   // else {
-//   //   // Logout
-//   //   await session.logout();
-//   //   window.location.reload();
-//   // }
-// }
+    // Start FedCM login with the extracted parameters
+    const fedcmResponse = await startFedcmLogin(params);
+    console.log("Received token:", fedcmResponse);
 
-// function parseUrlParam() {
-//   const urlObj = new URL(window.location.href);
-//   const queryData = Object.fromEntries(urlObj.searchParams.entries());
-//   return queryData;
-// }
+    // Handle the incoming redirect with the returned token
+    console.log("Processing incoming redirect...");
+    redirectUrl.value = fedcmResponse.token
+    await session.handleIncomingRedirect(fedcmResponse.token);
 
-// export async function startFedcmLogin(params) {
-//   console.log('startFedcmLogin')
-//   // const params = parseUrlParam()
-//   console.log("params", params)
-//   // const clientId = `${window.location.protocol}//${window.location.host}/clientid`
-//   const identity_registered = {
-//     "providers": [
-//       {
-//         "configURL": `any`,
-//         "clientId": params.client_id,
-//         "registered": true,
-//         // "type": "webid",
+    if (session.info.isLoggedIn) {
+      console.log("Session info:", session.info);
+      // put in the resourceFetcher a resource that is private by default ( profile/ )
+      resourceInput.value = session.info.webId.replace('card#me', '');
+      loginStatusDiv.innerText = `You are logged in with ${session.info.webId}`;
+    } else {
+      console.log("User is not logged in.");
+    }
+  } catch (err) {
+    console.log("Error during FedCM login:", err);
+  }
+};
 
-//         "params": {
-//           "code_challenge": params.code_challenge,
-//           "code_challenge_method": params.code_challenge_method,
-//           "state": params._state
+/**
+ * Start FedCM login by calling the navigator.credentials API.
+ * @param {object} params - Parameters extracted from the URL, with the client_id , the code_challenge* and the state
+ * @returns {Promise<object>} - The token returned by the credentials API.
+ */
+async function startFedcmLogin(params) {
+  console.log("Starting FedCM login...");
+  const identityRegistered = {
+    providers: [
+      {
+        configURL: `any`, // Trigger the registered IdP API 
+        clientId: params.client_id,
+        registered: true,
+        params: {
+          code_challenge: params.code_challenge,
+          code_challenge_method: params.code_challenge_method,
+          state: params.state
+        }
+      }
+    ]
+  };
 
-//         }
+  console.log("Requesting credentials via navigator API...");
+  try {
+    const token = await navigator.credentials.get({
+      identity: identityRegistered
+    });
+    console.log("Navigator returned token:", token);
+    return token;
+  } catch (error) {
+    console.log("Error calling navigator.credentials.get:", error);
+    return;
+  }
+}
 
-//       }
-//     ]
-//   }
-//   console.log('requesting navigator\'s API..')
-//   try {
-//     const token = await navigator.credentials.get({
-//       identity: identity_registered
-//     })
-//     console.log('token', token)
-//     return token
-//   } catch (error) {
-//     console.log("Client Error calling the navigator api: ", error);
-//     return
+// Binding the buttons to their respective functions
+fetchResourceButton.addEventListener('click', fetchResource);
+loginButton.addEventListener('click', () =>
+  inruptLoginWithFedcm(CSS_URL, session)
+);
 
-//   }
-// }
-
+  // Uncomment below if you want to handle incoming redirects automatically on page load.
+  // (async () => {
+  //   await session.handleIncomingRedirect();
+  // })();
 

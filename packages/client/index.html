@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/solid.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simple Solid App Demo</title>
+</head>
+
+<body>
+ 	<h1>Solid-oidc FedCM Demo</h1>
+
+  <!--  Configuration -->
+  <section>
+    <h2>1. Login</h2>
+    <p>
+      CSS URL:
+      <input id="cssurl" />
+    </p>
+  </section>
+
+  <!--Login -->
+  <section>
+    <h2>2. Login</h2>
+    <p>
+      Make sure you're logged in with your
+      <a id="accountlink">css account</a>
+    </p>
+    <button id="startInruptLogin">Inrupt Login With FedCM</button>
+    <div id="loginstatus"></div>
+    <p>
+      redirect url:
+      <input id="redirect_url" />
+    </p>
+  </section>
+
+  <!--  Fetch Resource -->
+  <section>
+    <h2>3. Fetch a Protected Resource</h2>
+    <div>
+      <label for="resourceInput">Resource to view:</label>
+      <input type="text" id="resourceInput" placeholder="e.g. http://localhost:3000/alice/private/secret" />
+    </div>
+    <button id="fetchResource">Fetch Resource</button>
+    <div id="resourceContent"></div>
+  </section>
+
+  <script type="module" src="/src/solid.js"></script>
+</body>
+
+</html>

@@ -1,18 +1,21 @@
+
 {
-  "name": "solid-fedcm-client",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "name": "solid-inrupt-authn-fedcm-demo",
+  "version": "1.0.0",
+  "description": "A simple FedCM with Inrupt authn demo using Vite and Express",
   "scripts": {
-    "start": "bun src/server.js",
-    "start:mitm": "echo \"PLEASE START THE MITMPROXY WITH 'mitmproxy --mode reverse:http://localhost:6081 -p 6080 --set keep_host_header=true'\"; PORT=6081 bun src/server.js",
-    "build": "bun build src/solid.js --outdir public/"
+    "dev": "vite",
+    "build": "vite build",
+    "dev:mitm": "echo \"PLEASE START THE MITMPROXY WITH 'mitmproxy --mode reverse:http://localhost:6081 -p 6080 --set keep_host_header=true'\"; PORT=6081 npm run dev",
+    "preview": "vite preview",
+    "start": "node server.js"
   },
   "dependencies": {
-    "@inrupt/solid-client": "^1.30.2",
     "@inrupt/solid-client-authn-browser": "^1.17.5",
-    "@inrupt/solid-client-authn-core": "^2.1.0",
-    "@inrupt/vocab-common-rdf": "^1.0.5",
     "express": "^4.18.2"
-  }
+  },
+  "devDependencies": {
+    "vite": "^4.0.0"
+  },
+  "type": "module"
 }
