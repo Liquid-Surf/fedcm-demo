@@ -83,65 +83,88 @@ export async function getAccessToken(authString, opUrl) {
 
 }
 
-export async function inruptLogin(cssUrl, session) {
-  if (!session.info.isLoggedIn) {
-    // Initiate login
-    const login_response = await session.login({
-      // clientId: `${window.location.href}clientid`,
-      oidcIssuer: cssUrl,
-      redirectUrl: window.location.href,
-      clientName: "Solid Demo App",
-      prompt: "consent",
-    });
-    console.log("login_response", login_response)
-  }
-  // else {
-  //   // Logout
-  //   await session.logout();
-  //   window.location.reload();
-  // }
-}
+// export async function inruptLogin(cssUrl, session) {
+//   if (!session.info.isLoggedIn) {
+//     // Initiate login
+//     const login_response = await session.login({
+//       // clientId: `${window.location.href}clientid`,
+//       oidcIssuer: cssUrl,
+//       redirectUrl: window.location.href,
+//       clientName: "Solid Demo App",
+//       prompt: "consent",
+//       "handleRedirect": async (url) => {
+//         try {
+//           console.log("handle redirect ur ", url)
+//           const urlObj = new URL(url);
+//           const params = Object.fromEntries(urlObj.searchParams.entries());
+//           console.log("PARAMS", params)
+//           const token = await startFedcmLogin(params)
+//           console.log("TOKEN", token)
+//           // window.location = token.token 
+//           // const res = await session.handleIncomingRedirect(token.token);
+//           // console.log("handling redirect res", res)
+//           // if (session.info.isLoggedIn) {
+//           //   console.log(`User is logged in with WebID: ${session.info.webId}`);
+//           //   console.log(session.info);
+//           // } else {
+//           //   console.log('not logged in..')
+//           // }
+//         } catch (err) {
+//           console.log("got an error during fedcm loggin..", err)
+//         }
 
-function parseUrlParam() {
-  const urlObj = new URL(window.location.href);
-  const queryData = Object.fromEntries(urlObj.searchParams.entries());
-  return queryData;
-}
+//       },
+//     });
+//     console.log("login_response", login_response)
+//   }
+//   // else {
+//   //   // Logout
+//   //   await session.logout();
+//   //   window.location.reload();
+//   // }
+// }
 
-export async function startFedcmLogin(cssUrl) {
-  console.log('startFedcmLogin')
-  const params = parseUrlParam()
-  console.log("params", params)
-  // const clientId = `${window.location.protocol}//${window.location.host}/clientid`
-  const identity_registered = {
-    "providers": [
-      {
-        "configURL": `any`,
-        "clientId": params.client_id,
-        "registered": true,
-        // "type": "webid",
-        "params": {
-          "code_challenge": params.code_challenge,
-          "code_challenge_method": params.code_challenge_method,
-          "state": params._state
+// function parseUrlParam() {
+//   const urlObj = new URL(window.location.href);
+//   const queryData = Object.fromEntries(urlObj.searchParams.entries());
+//   return queryData;
+// }
 
-        }
+// export async function startFedcmLogin(params) {
+//   console.log('startFedcmLogin')
+//   // const params = parseUrlParam()
+//   console.log("params", params)
+//   // const clientId = `${window.location.protocol}//${window.location.host}/clientid`
+//   const identity_registered = {
+//     "providers": [
+//       {
+//         "configURL": `any`,
+//         "clientId": params.client_id,
+//         "registered": true,
+//         // "type": "webid",
 
-      }
-    ]
-  }
-  console.log('requesting navigator\'s API..')
-  try {
-    const authString = await navigator.credentials.get({
-      identity: identity_registered
-    })    
-    console.log('authString', authString)
-    return { authString }
-  } catch (error) {
-    console.log("Client Error calling the navigator api: ", error);
-    return
+//         "params": {
+//           "code_challenge": params.code_challenge,
+//           "code_challenge_method": params.code_challenge_method,
+//           "state": params._state
 
-  }
-}
+//         }
+
+//       }
+//     ]
+//   }
+//   console.log('requesting navigator\'s API..')
+//   try {
+//     const token = await navigator.credentials.get({
+//       identity: identity_registered
+//     })
+//     console.log('token', token)
+//     return token
+//   } catch (error) {
+//     console.log("Client Error calling the navigator api: ", error);
+//     return
+
+//   }
+// }
 
 

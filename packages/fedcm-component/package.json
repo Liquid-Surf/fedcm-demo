@@ -17,7 +17,7 @@
   },
   "scripts": {
     "start": "community-solid-server -c fedcm-file.json -f data -m . -p 3000",
-    "start:mitm": "echo \"PLEASE START THE MITMPROXY WITH 'mitmproxy --mode reverse:http://localhost:3001 -p 3000 --set keep_host_header=true -s ./mitm/block_redirect.py'\";community-solid-server -c fedcm-file.json -f data -m . -p 3001 --baseUrl http://localhost:3000",
+    "start:mitm": "echo \"PLEASE START THE MITMPROXY WITH 'mitmproxy --mode reverse:http://localhost:3001 -p 3000 --set keep_host_header=true '\";community-solid-server -c fedcm-file.json -f data -m . -p 3001 --baseUrl http://localhost:3000",
     "start2": "community-solid-server -c fedcm-file.json -f data2 -m . -p 3001",
     "start:debug": "npm run build && community-solid-server -c fedcm-file.json -f data -m . -p 3000",
     "start:lt": "npm run build && community-solid-server -c fedcm-file.json -f data -m . -p 3000 -b https://css-fedcm-demo.loca.lt",
