@@ -4,3 +4,5 @@ packages/fedcm-component/dist
 packages/client/public/solid.js
 .vscode
 packages/fedcm-component/data2
+demo_video
+packages/client/public

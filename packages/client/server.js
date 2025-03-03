@@ -1,7 +1,8 @@
 import express from "express";
 
 const app = express();
-const port = process.env.PORT  || 6080; // Accept from env, CLI args, or default
+const port = process.env.PORT || 6080;
+const CLIENT_URL = process.env.CLIENT_URL || `http://localhost:${port}/`;
 
 app.use(express.static('public'));
 
@@ -11,7 +12,7 @@ const clientId = {
   "client_id": `123`,
   "client_name": "test RP",
   "redirect_uris": [
-    `http://localhost:${port}/`
+    CLIENT_URL
   ],
 
   "grant_types": ["authorization_code"],

@@ -5,7 +5,7 @@ import { Session as InruptSession} from '@inrupt/solid-client-authn-browser';
 const session = new InruptSession();
 
 // Demo configuration constant
-const CSS_URL = 'http://localhost:3000/';
+const CSS_URL = import.meta.env.VITE_CSS_URL || 'http://localhost:3000/';
 
 const resourceInput = document.getElementById('resourceInput');
 const cssUrlInput = document.getElementById('cssurl');
