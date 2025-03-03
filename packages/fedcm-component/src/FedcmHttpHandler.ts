@@ -124,6 +124,8 @@ export class FedcmHttpHandler extends HttpHandler {
     const accountId = await this.cookieStore.get(cssAccountCookie)
     // TODO If the user is not signed in, respond with HTTP 401 (Unauthorized).
     // find a way to check if the user is signed in
+    // Is the fact that we have a cookie enough to assume user is logged in ?
+    // Is there expiration on a cookie ? can I test with an expirated cookie and able to log in ?
 
     if (!accountId) {
       // TODO Does this necessary mean the user is not signed in ? 
@@ -169,135 +171,18 @@ export class FedcmHttpHandler extends HttpHandler {
     response.end(JSON.stringify(metadata));
   }
 
-  // ------ UTILS FOR handleToken ------- //
 
-  private async fetchWithDefaults(url: string, options: RequestInit = {}): Promise<Response> {
-    const defaultHeaders: Record<string, string> = {
-      'Host': 'localhost:3000',
-      'Connection': 'keep-alive',
-      'Sec-Fetch-Site': 'same-origin',
-      'Sec-Fetch-Mode': 'cors',
-    };
-    options.headers = { ...defaultHeaders, ...(options.headers || {}) };
-    return fetch(url, options);
-  }
 
-  // Get first OIDC interaction cookie
-  private async initiateOidcInteraction(clientId: string, clientUrl: string, codeChallenge: string, state: string): Promise<any> {
-    const redirectUri = encodeURIComponent(clientUrl);
-    const responseType = 'code';
-    const scope = 'openid offline_access webid';
-    const codeChallengeMethod = 'S256';
-    const prompt = 'consent';
-    const responseMode = 'query';
-
-    const url = `${this.baseUrl}.oidc/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=${responseType}&scope=${encodeURIComponent(scope)}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=${codeChallengeMethod}&prompt=${prompt}&response_mode=${responseMode}&bypass=true`;
-
-    const headers = {
-      'Host': `localhost:3000`,
-      'Accept': 'text/html',
-      // 'Referer': clientUrl,
-      'Referer': 'http://localhost:6080/',
-      'Sec-Fetch-Site': "same-site",
-      'Sec-Fetch-Mode': "navigate",
-      'Sec-Fetch-Dest': "document",
-      'Connection': "keep-alive"
-
-    };
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers,
-      // Do not follow the 303 redirect
-      redirect: 'manual',
-      credentials: 'include'
-    });
-
-    const resp_status = response.status
-    const resp_cookies = response.headers.getSetCookie()
-    const resp_body = await response.text()
-
-    return resp_cookies
-
-  }
-
-  // Creates the OIDC interaction if available.
-  private async getOidcInteraction(
-    { request, response }: HttpHandlerInput,
-     initiateOidcInteractionCookies: Array<string>,
-     provider: Provider
-     ): Promise<Interaction | undefined> {
-    let req_with_cookie = request
-    req_with_cookie.headers.cookie += '; '
-    req_with_cookie.headers.cookie += initiateOidcInteractionCookies.join('; ')
-
-    try {
-      // Keeping this here, it create an error on oidc-provider
-      // will try to reproduce it
-      // request.headers.cookie += ';_interaction=mWJLy75-lL8EhhJpy7lpu; _interaction.sig=QfxSPQxo6gYTyfT3TspY6JTt1v0;css-account=c5dfed2a-cfc2-4862-b94e-b791cb1d7c89'
-      return await provider.interactionDetails(req_with_cookie, response);
-    } catch (err) {
-      this.logger.debug('No active OIDC interaction found:' + err);
-      return undefined;
-    }
-  }
 
   // RESOLVELOGIN: Generates an authorization cookie and (if an OIDC interaction exists)
   // finishes the interaction to update policies.
-  private async resolveLogin(accountId: string, interaction: Interaction | undefined): Promise<string> {
+  private async resolveLogin(accountId: string): Promise<string> {
     // TODO just put part of the resolveLogin code, might need to recheck that part
     let authorization: string;
     authorization = await this.cookieStore.generate(accountId);
-    if (interaction) {
-      // Finish the interaction so the policies are checked again, where they will find the new cookie
-      await finishInteraction(interaction, {}, true);
-    }
     return authorization;
   }
 
-  // PICK-WEBID: Calls the pick-webid endpoint, updates the OIDC interaction with the picked WebID,
-  // and retrieves the redirect response to be used in the consent flow.
-  private async pickWebIdAndFinishInteraction(
-    originalCookie: string,
-    authorization: string,
-    webId: string, 
-    accountId: string, 
-    oidcInteraction: Interaction ,
-    provider: Provider, 
-    remember = true, // TODO: what value to set by default ?
-  ): Promise<void> {
-    if (!oidcInteraction) {
-      // TODO handle earlier
-      throw new BadRequestHttpError('No active OIDC interaction available.');
-    }
-    try {
-      // PickWebIdHandler code
-      //TODO
-      // assertOidcInteraction(oidcInteraction); 
-      // assertAccountId(accountId); 
-      // const { webId, remember } = await validateWithError(inSchema, json);
-      if (!await this.webIdStore.isLinked(webId, accountId)) {
-        this.logger.warn(`Trying to pick WebID ${webId} which does not belong to account ${accountId}`);
-        throw new BadRequestHttpError('WebID does not belong to this account.');
-      }
-  
-      // We need to explicitly forget the WebID from the session or the library won't allow us to update the value
-      await forgetWebId(await this.providerFactory.getProvider(), oidcInteraction);
-  
-      // Update the interaction to get the redirect URL
-      const login: InteractionResults['login'] = {
-        // Note that `accountId` here is unrelated to our user accounts but is part of the OIDC library
-        accountId: webId,
-        remember,
-      };
-  
-      const location = await finishInteraction(oidcInteraction, { login }, true);
-
-    } catch (err) {
-      this.logger.error('Error during pick-webid processing:' + err);
-      throw new InternalServerError('Pick-webid process failed.');
-    }
-  }
 
 
 
@@ -305,6 +190,9 @@ export class FedcmHttpHandler extends HttpHandler {
   private async getCode(req: string, webId: string, provider: Provider): Promise<string> {
 
     // const r = await readableToString(request)
+
+
+    // TODO
     const client_id = new URLSearchParams(req).get('client_id') || ''
     const params_raw = new URLSearchParams(req).get('params') || undefined
     const params = params_raw ? JSON.parse(params_raw) : {}
@@ -379,6 +267,7 @@ export class FedcmHttpHandler extends HttpHandler {
     //such as the account ID, client ID, issuer origin, nonce, so that the RP can verify the token is genuine.
 
     const r = await readableToString(request)
+    // TODO
     const client_id = new URLSearchParams(r).get('client_id') || ''
     const nonce = new URLSearchParams(r).get('nonce') || undefined
     const params_raw = new URLSearchParams(r).get('params') || undefined
@@ -451,43 +340,21 @@ export class FedcmHttpHandler extends HttpHandler {
 
     // ------ GET AUTHZ CODE ------ //
 
-    const initiateOidcInteractionCookies =
-      await this.initiateOidcInteraction(
-        encodeURIComponent(client_id),
-        "http://localhost:6080/",
-        params.code_challenge,
-        params.state)
-    let cgaCookie = '123';
-    const oidcInteraction = await this.getOidcInteraction({ request, response }, initiateOidcInteractionCookies, provider);
+    const oidcInteraction = new provider.Interaction()
+    const authorization = await this.resolveLogin(accountId);
 
-    if (!oidcInteraction){
-      // TODO
-      response.writeHead(500, { 'Content-Type': 'application/json' })
-      response.end(JSON.stringify({ 'error': 'no interaction found' }))
-      return
-    }
-    const authorization = await this.resolveLogin(accountId, oidcInteraction);
 
-    
     const accountLinks = await this.webIdStore.findLinks(accountId)
-    const webId = accountLinks[0].webId || '' // TODO multi webId account
 
 
     // ----- PICK-WEBID -----
+    const webId = accountLinks[0].webId || '' // TODO multi webId account
 
-    // TODO 
-    let originalCookie = request.headers.cookie || ''
-    // updating cookies with new authorization
-    originalCookie += `; css-account=${authorization}`;
-    originalCookie = originalCookie.split('; ').slice(1).join('; ') 
-    await this.pickWebIdAndFinishInteraction(
-      originalCookie,
-      authorization,
-      webId,
-      accountId,
-      oidcInteraction, 
-      provider
-    );
+
+      // We need to explicitly forget the WebID from the session or the library won't allow us to update the value
+      // TODO: seems that this only affect the interaction and can be safely removed. 
+      // should we remove those stuff from the session ? 
+      // await forgetWebId(await this.providerFactory.getProvider(), oidcInteraction);
 
 
     const code = await this.getCode(r, webId, provider)
