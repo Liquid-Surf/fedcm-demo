@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node server.js"
-    "start:mitm": "echo \"PLEASE START THE MITMPROXY WITH 'mitmproxy --mode reverse:http://localhost:6081 -p 6080 --set keep_host_header=true'\"; PORT=6081 npm run dev",
+    "start": "node server.js", 
+    "start:mitm": "echo \"PLEASE START THE MITMPROXY WITH 'mitmproxy --mode reverse:http://localhost:6081 -p 6080 --set keep_host_header=true'\"; PORT=6081 npm run dev"
   },
   "dependencies": {
     "@inrupt/solid-client-authn-browser": "^1.17.5",
