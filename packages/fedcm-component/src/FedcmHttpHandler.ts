@@ -260,45 +260,39 @@ export class FedcmHttpHandler extends HttpHandler {
   private async pickWebIdAndFinishInteraction(
     originalCookie: string,
     authorization: string,
-    interaction: Interaction | undefined,
-    provider: Provider
-  ): Promise<string> {
-    if (!interaction) {
+    webId: string, 
+    accountId: string, 
+    oidcInteraction: Interaction ,
+    provider: Provider, 
+    remember = true, // TODO: what value to set by default ?
+  ): Promise<void> {
+    if (!oidcInteraction) {
+      // TODO handle earlier
       throw new BadRequestHttpError('No active OIDC interaction available.');
     }
     try {
-      // TODO get url dynamically
-      // TODO do not use fetch, import code from pick-webid
-      const pickWebIdEndpoint = 'http://localhost:3000/.account/oidc/pick-webid/';
-
-      const webIdResponse = await this.fetchWithDefaults(pickWebIdEndpoint, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Sec-Fetch-Dest': 'empty',
-          'Cookie': originalCookie
-        } as any,
-      });
-
-      if (!webIdResponse.ok) {
-        throw new InternalServerError('Failed to fetch pick-webid endpoint.');
+      // PickWebIdHandler code
+      //TODO
+      // assertOidcInteraction(oidcInteraction); 
+      // assertAccountId(accountId); 
+      // const { webId, remember } = await validateWithError(inSchema, json);
+      if (!await this.webIdStore.isLinked(webId, accountId)) {
+        this.logger.warn(`Trying to pick WebID ${webId} which does not belong to account ${accountId}`);
+        throw new BadRequestHttpError('WebID does not belong to this account.');
       }
-      const webIdJson: any = await webIdResponse.json();
-      if (webIdJson.webIds.length < 1)
-        throw new InternalServerError('No webId for this account');
-      const webId = webIdJson.webIds[0];
-
-      await forgetWebId(provider, interaction);
-
+  
+      // We need to explicitly forget the WebID from the session or the library won't allow us to update the value
+      await forgetWebId(await this.providerFactory.getProvider(), oidcInteraction);
+  
+      // Update the interaction to get the redirect URL
       const login: InteractionResults['login'] = {
         // Note that `accountId` here is unrelated to our user accounts but is part of the OIDC library
         accountId: webId,
-        remember: false,
+        remember,
       };
+  
+      const location = await finishInteraction(oidcInteraction, { login }, true);
 
-      const location = await finishInteraction(interaction, { login }, true);
-      // TODO: try to forge request and send it to this.oidcHttpHandler
-      return webId
     } catch (err) {
       this.logger.error('Error during pick-webid processing:' + err);
       throw new InternalServerError('Pick-webid process failed.');
@@ -466,17 +460,31 @@ export class FedcmHttpHandler extends HttpHandler {
     let cgaCookie = '123';
     const oidcInteraction = await this.getOidcInteraction({ request, response }, initiateOidcInteractionCookies, provider);
 
+    if (!oidcInteraction){
+      // TODO
+      response.writeHead(500, { 'Content-Type': 'application/json' })
+      response.end(JSON.stringify({ 'error': 'no interaction found' }))
+      return
+    }
     const authorization = await this.resolveLogin(accountId, oidcInteraction);
+
+    
+    const accountLinks = await this.webIdStore.findLinks(accountId)
+    const webId = accountLinks[0].webId || '' // TODO multi webId account
+
 
     // ----- PICK-WEBID -----
 
+    // TODO 
     let originalCookie = request.headers.cookie || ''
     // updating cookies with new authorization
     originalCookie += `; css-account=${authorization}`;
     originalCookie = originalCookie.split('; ').slice(1).join('; ') 
-    const webId = await this.pickWebIdAndFinishInteraction(
+    await this.pickWebIdAndFinishInteraction(
       originalCookie,
       authorization,
+      webId,
+      accountId,
       oidcInteraction, 
       provider
     );
