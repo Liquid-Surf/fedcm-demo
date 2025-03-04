@@ -19,7 +19,7 @@ const fetchResourceButton = document.getElementById("fetchResource")
 const loginButton = document.getElementById("startInruptLogin")
 
 // Set initial values in the UI
-resourceInput.value = `${CSS_URL}`;
+resourceInput.value = `${CSS_URL}alice/profile/`;
 cssUrlInput.value = CSS_URL;
 // TODO: fetch URL dynamically instead of hardcoded
 accountLink.href = `${CSS_URL}.account/`;
