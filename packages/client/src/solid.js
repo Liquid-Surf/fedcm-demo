@@ -60,12 +60,14 @@ const fetchResource = async () => {
  * @param {object} session - The Inrupt session object.
  */
 async function inruptLoginWithFedcm(cssUrl, session) {
+  const clientId = `${window.location.href}clientid`
   if (!session.info.isLoggedIn) {
     await session.login({
       oidcIssuer: cssUrl,
       redirectUrl: window.location.href,
       clientName: "Solid Demo App",
       prompt: "consent",
+      clientId,
       // this has nothing to do with handleRedirectIncoming
       // here we override the default redirect behaviour
       handleRedirect: async (url) => triggerFedcmLoginAndHandleResponse(url)
@@ -154,4 +156,3 @@ loginButton.addEventListener('click', () =>
   // (async () => {
   //   await session.handleIncomingRedirect();
   // })();
-

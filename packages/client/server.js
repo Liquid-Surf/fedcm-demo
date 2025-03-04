@@ -9,18 +9,21 @@ app.use(express.static('public'));
 
 
 const clientId = {
-  "client_id": `123`,
-  "client_name": "test RP",
-  "redirect_uris": [
-    CLIENT_URL
-  ],
+  "@context": ["https://www.w3.org/ns/solid/oidc-context.jsonld"],
 
-  "grant_types": ["authorization_code"],
-  "response_types": ["code"]
+  "client_id": `${CLIENT_URL}clientid`,
+  "client_name": "Solid Application Name",
+  "redirect_uris": [`${CLIENT_URL}`],
+  "scope" : "openid profile offline_access webid",
+  "grant_types" : ["refresh_token","authorization_code"],
+  "response_types" : ["code"],
+  "default_max_age" : 3600,
+  "require_auth_time" : true
 }
 
 app.get("/clientid", (req, res) => {
-  res.status(200).json(clientId);
+  res.contentType('application/ld+json')
+  res.status(200).send(clientId);
 });
 
 
