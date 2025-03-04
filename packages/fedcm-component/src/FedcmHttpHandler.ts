@@ -190,7 +190,7 @@ export class FedcmHttpHandler extends HttpHandler {
 
   private async getCode(req: string, webId: string, provider: Provider): Promise<string> {
 
-    // const r = await readableToString(request)
+    // const req = await readableToString(request)
 
 
     // TODO
@@ -254,26 +254,7 @@ export class FedcmHttpHandler extends HttpHandler {
   }
 
 
-  private async forgeRedirectUrl(request: HttpRequest, client_id: string, code: string, state: string, provider: Provider): Promise<string>{
-    const client = await provider.Client.find(client_id)
-    const allowed_uris = client?.redirectUris?.map(url => this.removeLastTraillingSlash(url))
 
-    // TODO: SECURITY: is this enough checks ? 
-    // does it have implication if a user alter a redirect_uri, or the origin of the request ? 
-
-    if (!allowed_uris){
-      throw new InternalServerError("Client doesn't have redirectUris")
-    }
-    if (!request.headers.origin){
-      throw new BadRequestHttpError("No origin found in the request's header")
-    }
-    const origin = this.removeLastTraillingSlash(request.headers?.origin) 
-    if (allowed_uris?.indexOf(origin) < 0){
-      throw new BadRequestHttpError("The origin of the request do not match any allowed URI of the OIDC client.")
-    }
-
-    return `${origin}/?code=${code}&state=${state}&iss=${encodeURIComponent(this.baseUrl)}`
-  }
 
   private async handleToken({ request, response }: HttpHandlerInput): Promise<void> {
     // 3.5
@@ -287,10 +268,10 @@ export class FedcmHttpHandler extends HttpHandler {
     // How the token is issued is up to the IdP, but in general, it's signed with information 
     //such as the account ID, client ID, issuer origin, nonce, so that the RP can verify the token is genuine.
 
-    const r = await readableToString(request)
+    const req = await readableToString(request)
     // TODO
-    const client_id = new URLSearchParams(r).get('client_id') || ''
-    const params_raw = new URLSearchParams(r).get('params') || undefined
+    const client_id = new URLSearchParams(req).get('client_id') || ''
+    const params_raw = new URLSearchParams(req).get('params') || undefined
     const params = params_raw ? JSON.parse(params_raw) : {}
     const provider = await this.providerFactory.getProvider()
 
@@ -319,7 +300,7 @@ export class FedcmHttpHandler extends HttpHandler {
     const cssAccountCookie = cookies['css-account']
 
     const accountId = await this.cookieStore.get(cssAccountCookie)
-    const reqAccountId = new URLSearchParams(r).get('account_id')
+    const reqAccountId = new URLSearchParams(req).get('account_id')
 
     if (!accountId) {
       const error_msg = 'no account id find with the given cookie'
@@ -344,27 +325,33 @@ export class FedcmHttpHandler extends HttpHandler {
       response.end(JSON.stringify({ 'error': error_msg }))
       return
     }
+    const client = await provider.Client.find(client_id)
+    const allowed_uris = client?.redirectUris?.map(url => this.removeLastTraillingSlash(url))
 
+    // TODO: SECURITY: is this enough checks ? 
+    // does it have implication if a user alter a redirect_uri, or the origin of the request ? 
+
+    if (!allowed_uris){
+      throw new InternalServerError("Client doesn't have redirectUris")
+    }
+    if (!request.headers.origin){
+      throw new BadRequestHttpError("No origin found in the request's header")
+    }
+    if (!allowed_uris){
+      throw new InternalServerError("Client doesn't have redirectUris")
+    }
+
+    if (!request.headers.origin){
+      throw new BadRequestHttpError("No origin found in the request's header")
+    }
     // ----- PICK-WEBID -----
     const accountLinks = await this.webIdStore.findLinks(accountId)
     const webId = accountLinks[0].webId || '' // TODO multi webId account
 
-
-    // We need to explicitly forget the WebID from the session or the library won't allow us to update the value
-    // TODO: seems that this only affect the interaction and can be safely removed. 
-    // should we remove those stuff from the session ? 
-    // await forgetWebId(await this.providerFactory.getProvider(), oidcInteraction);
-
-    const code = await this.getCode(r, webId, provider)
-    // We use a url as a returned value for now because this is what needs 
-    // inrupt's authn library  and fedcm only support string for the token value.
-    // So this is more handy. 
-    // However in the future we might want to return code, state, and iss as a json and forge
-    // the url in the client side. 
-    const codeUrl = await this.forgeRedirectUrl(request, client_id, code, params.state, provider)
+    const code = await this.getCode(req, webId, provider)
 
     response.writeHead(200, { 'Content-Type': 'application/json' })
-    response.end(JSON.stringify({ 'token': codeUrl, }))
+    response.end(JSON.stringify({ 'token': code, }))
   }
 
 

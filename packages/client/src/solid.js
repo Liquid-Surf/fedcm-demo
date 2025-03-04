@@ -1,5 +1,5 @@
 
-import { Session as InruptSession} from '@inrupt/solid-client-authn-browser';
+import { Session as InruptSession } from '@inrupt/solid-client-authn-browser';
 
 // Initialize Inrupt session
 const session = new InruptSession();
@@ -54,6 +54,11 @@ const fetchResource = async () => {
   }
 };
 
+const forgeRedirectUrl = (code, state, provider_url) => {
+  return `${window.location.href}?code=${code}&state=${state}&iss=${encodeURIComponent(provider_url)}`
+}
+
+
 /**
  * Initiate Inrupt login using Fedcm if the user is not already logged in.
  * @param {string} cssUrl - The CSS base URL.
@@ -70,7 +75,7 @@ async function inruptLoginWithFedcm(cssUrl, session) {
       clientId,
       // this has nothing to do with handleRedirectIncoming
       // here we override the default redirect behaviour
-      handleRedirect: async (url) => triggerFedcmLoginAndHandleResponse(url)
+      handleRedirect: async (url) => triggerFedcmLoginAndHandleResponse(url, cssUrl)
     });
   }
 }
@@ -80,7 +85,7 @@ async function inruptLoginWithFedcm(cssUrl, session) {
       * Trigger FedCM login process using parameters from the redirect URL.
       * @param {string} url - The redirect URL containing FedCM parameters, returned by CSS FedCMHandler
       */
-const triggerFedcmLoginAndHandleResponse = async (url) => {
+const triggerFedcmLoginAndHandleResponse = async (url, provider_url) => {
   try {
     // parsing the params ( code_challenge, state etc.. ) from the URL 
     // given by inrupt login function
@@ -90,13 +95,14 @@ const triggerFedcmLoginAndHandleResponse = async (url) => {
     console.log("Parsed parameters:", params);
 
     // Start FedCM login with the extracted parameters
-    const fedcmResponse = await navigatorApiCallWrapper(params);
-    console.log("Received token:", fedcmResponse);
+    const fedcm_response = await navigatorApiCallWrapper(params);
+    const authorization_code = fedcm_response.token 
+    console.log("Received token:", authorization_code);
 
     // Handle the incoming redirect with the returned token
-    console.log("Processing incoming redirect...");
-    redirectUrl.value = fedcmResponse.token
-    await session.handleIncomingRedirect(fedcmResponse.token);
+    const redirectUrl = forgeRedirectUrl(authorization_code, params.state, provider_url)
+    console.log("forged redirect Url: ", redirectUrl)
+    await session.handleIncomingRedirect(redirectUrl);
 
     if (session.info.isLoggedIn) {
       console.log("Session info:", session.info);
