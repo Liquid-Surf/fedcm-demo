@@ -10,10 +10,13 @@
 
 <body>
  	<h1>Solid-oidc FedCM Demo</h1>
-
   <!--  Configuration -->
   <section>
-    <h2>1. Login</h2>
+    <details>
+    <summary>0.1 Configuration</summary>
+    <p>
+      Unless you want to use this client demo with your own FedCM compatible CSS instance, leave the following as it is, and use the CSS instance we provide.
+    </p>
     <p>
       This should be a CSS instance that support FedCM registrtion, with a `SameSite=None` cookie policy.
       CSS URL:
@@ -21,12 +24,38 @@
     </p>
   </section>
 
+	<!--- Registration -->
+  <section>
+    <details>
+    <summary>0.2 registration</summary>
+    <p>
+      You can skip this step by using the demo account:
+      <ul>
+      	<li>username: alice@example.org</li>
+      	<li>password: alice</li>
+      </ul>
+    </p>
+    <p>
+      If you don't already have one, please register an account <a id="registerlink">here</a>
+      After creating a account, add a Pod and a WebId, then Logout and Login again, and remember to click the "Register IdP" button.
+    </p>
+    </details>
+  </section>
+
   <!--Login -->
   <section>
-    <h2>2. Login</h2>
+    <h2>1. Login</h2>
     <p>
-      Make sure you're logged in with your
-      <a id="accountlink">css account</a>
+      Make sure you're logged in the 
+      <a id="accountlink">CSS instance</a>
+      with the demo account:
+      <ul>
+      	<li>username: alice@example.org</li>
+      	<li>password: alice</li>
+      </ul>
+      <strong>Don't forget to click the "Register Idp" button before login</strong>
+			<br/><br/>
+			(You can also register a custom account - see intruction in 0.2 )
     </p>
     <button id="startInruptLogin">Inrupt Login With FedCM</button>
     <div id="loginstatus"></div>
@@ -38,7 +67,7 @@
 
   <!--  Fetch Resource -->
   <section>
-    <h2>3. Fetch a Protected Resource</h2>
+    <h2>2. Fetch a Protected Resource</h2>
     <div>
       <label for="resourceInput">Resource to view:</label>
       <input type="text" id="resourceInput" placeholder="e.g. http://localhost:3000/alice/private/secret" />

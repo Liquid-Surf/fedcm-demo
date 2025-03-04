@@ -16,14 +16,8 @@
     "https://linkedsoftwaredependencies.org/bundles/npm/css-fedcm-module/^7.0.0/dist/": "dist/"
   },
   "scripts": {
-    "start": "community-solid-server -c fedcm-file.json -f data -m . ",
+    "start": "community-solid-server -c fedcm-file.json -f data -m . --seedConfig ./config/accounts_seed.json",
     "start:mitm": "echo \"PLEASE START THE MITMPROXY WITH 'mitmproxy --mode reverse:http://localhost:3001 -p 3000 --set keep_host_header=true '\";community-solid-server -c fedcm-file.json -f data -m . -p 3001 --baseUrl http://localhost:3000",
-    "start2": "community-solid-server -c fedcm-file.json -f data2 -m . -p 3001",
-    "start:debug": "npm run build && community-solid-server -c fedcm-file.json -f data -m . -p 3000",
-    "start:lt": "npm run build && community-solid-server -c fedcm-file.json -f data -m . -p 3000 -b https://css-fedcm-demo.loca.lt",
-    "start:tls": "npm run build && community-solid-server -c fedcm-file.json -f data -m . -p 3000 -b http://idp.tls:3000",
-    "start:tld": "npm run build && community-solid-server -c fedcm-file.json -f data -m . -p 3000 -b http://idp.localhost:3000",
-    "start:b": "npm run build && community-solid-server -c fedcm-file.json -f data -m . -p 3000 -b http://b.localhost:3000",
     "build": "npm run build:ts && npm run build:components",
     "build:components": "componentsjs-generator -s src -c dist/components -i .componentsignore -r fedcm",
     "build:ts": "tsc",

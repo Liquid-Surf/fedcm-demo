@@ -10,6 +10,7 @@ const CSS_URL = import.meta.env.VITE_CSS_URL || 'http://localhost:3000/';
 const resourceInput = document.getElementById('resourceInput');
 const cssUrlInput = document.getElementById('cssurl');
 const accountLink = document.getElementById('accountlink');
+const registerLink = document.getElementById('registerlink');
 const loginStatusDiv = document.getElementById('loginstatus');
 const redirectUrl = document.getElementById('redirect_url')
 const resourceContentDiv = document.getElementById('resourceContent');
@@ -20,7 +21,9 @@ const loginButton = document.getElementById("startInruptLogin")
 // Set initial values in the UI
 resourceInput.value = `${CSS_URL}`;
 cssUrlInput.value = CSS_URL;
+// TODO: fetch URL dynamically instead of hardcoded
 accountLink.href = `${CSS_URL}.account/`;
+registerLink.href = `${CSS_URL}.account/login/password/register/`;
 
 
 
