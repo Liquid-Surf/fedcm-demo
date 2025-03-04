@@ -5,54 +5,54 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/solid.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
-  >
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <title>Simple Solid App Demo</title>
 </head>
 
 <body>
-  <main class="container">
+  <main class="container" style="max-width: 600px">
+    <h1>Solid-oidc FedCM Demo</h1>
     <article style="background-color: lightpink">
       <p>
         Make sure you use chromium based browsed ( version > 126 for chromium ) with the fedcm flag enable
       </p>
       <ul>
-      	<li>Go to chrome://flags and enter "fedcm" to filter the flags</li>
+        <li>Go to chrome://flags and enter "fedcm" to filter the flags</li>
         <li>Enable "FedCM with IdP Registration support" and "FedCmMultiIdp"</li>
       </ul>
     </article>
-   	<h1>Solid-oidc FedCM Demo</h1>
     <!--  Configuration -->
+    <p>optional steps ( click to spoil ) </p>
     <section>
       <details>
-      <summary>0.1 Configuration</summary>
-      <p>
-        Unless you want to use this client demo with your own FedCM compatible CSS instance, leave the following as it is, and use the CSS instance we provide.
-      </p>
-      <p>
-        This should be a CSS instance that support FedCM registrtion, with a `SameSite=None` cookie policy.
-        CSS URL:
-        <input id="cssurl" />
-      </p>
+        <summary>0.1 Configuration</summary>
+        <p>
+          Unless you want to use this client demo with your own FedCM compatible CSS instance, leave the following as it
+          is, and use the CSS instance we provide.
+        </p>
+        <p>
+          This should be a CSS instance that support FedCM registrtion, with a `SameSite=None` cookie policy.
+          CSS URL:
+          <input id="cssurl" />
+        </p>
     </section>
 
-  	<!--- Registration -->
+    <!--- Registration -->
     <section>
       <details>
-      <summary>0.2 registration</summary>
-      <p>
-        You can skip this step by using the demo account:
+        <summary>0.2 registration</summary>
+        <p>
+          You can skip this step by using the demo account:
         <ul>
-        	<li>username: alice@example.org</li>
-        	<li>password: alice</li>
+          <li>username: alice@example.org</li>
+          <li>password: alice</li>
         </ul>
-      </p>
-      <p>
-        If you don't already have one, please register an account <a id="registerlink">here</a>
-        After creating a account, add a Pod and a WebId, then Logout and Login again, and remember to click the "Register IdP" button.
-      </p>
+        </p>
+        <p>
+          If you don't already have one, please register an account <a id="registerlink">here</a>
+          After creating a account, add a Pod and a WebId, then Logout and Login again, and remember to click the
+          "Register IdP" button.
+        </p>
       </details>
     </section>
 
@@ -60,36 +60,39 @@
     <section>
       <h2>1. Login</h2>
       <p>
-        Make sure you're logged in the 
+        Make sure you're logged in the
         <a id="accountlink">CSS instance</a>
         with the demo account:
-        <ul>
-        	<li>username: alice@example.org</li>
-        	<li>password: alice</li>
-        </ul>
-        <strong>Don't forget to click the "Register Idp" button before login</strong>
-  			<br/><br/>
-  			(You can also register a custom account - see intruction in 0.2 )
-      </p>
+      <ul>
+        <li>username: alice@example.org</li>
+        <li>password: alice</li>
+      </ul>
+      <strong>Don't forget to click the "Register Idp" button before login</strong>
+      <br /><br />
+      (You can also register a custom account - see intruction in 0.2 )
       <button id="startInruptLogin">Solid-OIDC Login With FedCM</button>
-      <div id="loginstatus"></div>
+      </p>
+      <p style="background-color: green; color: white;" >
+        <span id="loginstatus"></span>
+      </p>
       <p>
-        <details>
-          <summary>redirect url: </summary>
-          <input id="redirect_url" />
-        </details>
+      <details>
+        <summary>redirect url: </summary>
+        <input id="redirect_url" />
+      </details>
       </p>
     </section>
 
     <!--  Fetch Resource -->
     <section>
       <h2>2. Fetch a Protected Resource</h2>
-      <div>
-        <label for="resourceInput">Resource to view:</label>
+      <p>
+        <label for="resourceInput">Resource to view: ( the default profile folder is a protected resource, see if you
+          can view its content ) </label>
         <input type="text" id="resourceInput" placeholder="e.g. http://localhost:3000/alice/private/secret" />
-      </div>
-      <button id="fetchResource">Fetch Resource</button>
-      <div id="resourceContent"></div>
+        <button id="fetchResource">Fetch Resource</button>
+      </p>
+      <p id="resourceContent"></p>
     </section>
   </main>
 
