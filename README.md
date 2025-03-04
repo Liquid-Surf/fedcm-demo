@@ -33,8 +33,8 @@ A workaround can be implemented: https://github.com/w3c-fedid/FedCM/issues/587#i
 
 # demo
 
-[client](https://fedcm-client.liquid.surf/)
-[css](https://exp.liquid.surf/)
+[client with inrupt library + FedCM support ](https://fedcm-client.liquid.surf/)
+[CSS with FedCM support](https://fedcm-server.liquid.surf/)
 
 Old demo video,only interesting to see the UX flow. ( in the demo we return an `access_token`but now we return the `authorization_code`  )
 [video demo](./demo_video/demo_2.mp4)
