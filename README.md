@@ -1,7 +1,6 @@
 
 
 # usage
-Requires [bun](https://bun.sh/docs/installation).
 ```
 npm i
 npm run build
@@ -34,6 +33,7 @@ A workaround can be implemented: https://github.com/w3c-fedid/FedCM/issues/587#i
 # demo
 
 [client with inrupt library + FedCM support ](https://fedcm-client.liquid.surf/)
+
 [CSS with FedCM support](https://fedcm-server.liquid.surf/)
 
 Old demo video,only interesting to see the UX flow. ( in the demo we return an `access_token`but now we return the `authorization_code`  )
@@ -43,7 +43,7 @@ Old demo video,only interesting to see the UX flow. ( in the demo we return an `
 
 Currently the demo has been tested on Debian with Chromium 125.0.6422.0 (Developer Build).
 
-Now the demo return an `authorization_code` instead of an `access_token`, which makes it work with [inrupt authentication library](https://github.com/inrupt/solid-client-authn-js) !!
+Now the demo return an `authorization_code` instead of an `access_token`, which makes it work with [inrupt authentication library](https://github.com/inrupt/solid-client-authn-js) \o/ ( see the demo ) 
 
 Please do not use it in production. ( see ##hosting )
 
@@ -53,6 +53,7 @@ Please do not use it in production. ( see ##hosting )
    - ~~[X] return an `access_token`~~
    - [X] return an `authorization_code`
    - [ ] implements logout
+ - [ ] grab vcard data from profile ( email, name, avatar ) and display it in FedCM login pop-up
  - [X] Add the IdP registration feature
    - [X] Edit the CSS component to register to the user agent during sign in ( or sign up ? )
    - [X] Modify the client to get register IdPs from the user agent
