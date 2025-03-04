@@ -65,7 +65,7 @@ async function inruptLoginWithFedcm(cssUrl, session) {
       prompt: "consent",
       // this has nothing to do with handleRedirectIncoming
       // here we override the default redirect behaviour
-      handleRedirect: async (url) => triggerFedcmLogin(url)
+      handleRedirect: async (url) => triggerFedcmLoginAndHandleResponse(url)
     });
   }
 }
@@ -75,7 +75,7 @@ async function inruptLoginWithFedcm(cssUrl, session) {
       * Trigger FedCM login process using parameters from the redirect URL.
       * @param {string} url - The redirect URL containing FedCM parameters, returned by CSS FedCMHandler
       */
-const triggerFedcmLogin = async (url) => {
+const triggerFedcmLoginAndHandleResponse = async (url) => {
   try {
     // parsing the params ( code_challenge, state etc.. ) from the URL 
     // given by inrupt login function
@@ -85,7 +85,7 @@ const triggerFedcmLogin = async (url) => {
     console.log("Parsed parameters:", params);
 
     // Start FedCM login with the extracted parameters
-    const fedcmResponse = await startFedcmLogin(params);
+    const fedcmResponse = await navigatorApiCallWrapper(params);
     console.log("Received token:", fedcmResponse);
 
     // Handle the incoming redirect with the returned token
@@ -111,7 +111,7 @@ const triggerFedcmLogin = async (url) => {
  * @param {object} params - Parameters extracted from the URL, with the client_id , the code_challenge* and the state
  * @returns {Promise<object>} - The token returned by the credentials API.
  */
-async function startFedcmLogin(params) {
+async function navigatorApiCallWrapper(params) {
   console.log("Starting FedCM login...");
   const identityRegistered = {
     providers: [
