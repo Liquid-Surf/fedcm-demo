@@ -41,8 +41,7 @@ export class FedcmHttpHandler extends HttpHandler {
   public async handle({ request, response }: HttpHandlerInput): Promise<void> {
 
     if (request.headers['sec-fetch-dest'] !== 'webidentity') {
-      response.writeHead(400, { 'Content-Type': 'application/json' });
-      response.end(JSON.stringify({ error: 'Bad Request: Missing or incorrect Sec-Fetch-Dest header' }));
+      throw new BadRequestHttpError('Missing or incorrect Sec-Fetch-Dest header');
       return;
     }
 
@@ -66,7 +65,7 @@ export class FedcmHttpHandler extends HttpHandler {
 
   }
 
-  private removeLastTraillingSlash(url: string): string { return url.slice(-1) == '/' ? url.slice(0, -1) : url}
+  private removeLastTraillingSlash(url: string): string { return url.slice(-1) == '/' ? url.slice(0, -1) : url }
   private async handleWebIdentity({ request, response }: HttpHandlerInput): Promise<void> {
     // 3.1
     // https://fedidcg.github.io/FedCM/#idp-api-well-known
@@ -128,9 +127,7 @@ export class FedcmHttpHandler extends HttpHandler {
 
     if (!accountId) {
       // TODO Does this necessary mean the user is not signed in ? 
-      response.writeHead(400, { 'Content-Type': 'text/plain' });
-      response.end(JSON.stringify({ error: `Could not find an account matching the given cookie (${cssAccountCookie}).` }));
-      return;
+      throw new BadRequestHttpError(`Could not find an account matching the given cookie (${cssAccountCookie}).`);
     }
 
 
@@ -282,9 +279,7 @@ export class FedcmHttpHandler extends HttpHandler {
     if (!client_id) {
       const error_msg = 'client_id missing from the request\'s body.'
       this.logger.info(error_msg)
-      response.writeHead(400, { 'Content-Type': 'application/json' })
-      response.end(JSON.stringify({ 'error': error_msg }))
-      return
+      throw new BadRequestHttpError(error_msg)
     }
 
     const cookies = parse(request.headers.cookie || '')
@@ -292,9 +287,7 @@ export class FedcmHttpHandler extends HttpHandler {
     if (!('css-account' in cookies)) {
       const error_msg = 'No CSS cookie found in the request header.'
       this.logger.info(error_msg)
-      response.writeHead(500, { 'Content-Type': 'application/json' })
-      response.end(JSON.stringify({ 'error': error_msg }))
-      return
+      throw new BadRequestHttpError(error_msg)
     }
 
     const cssAccountCookie = cookies['css-account']
@@ -305,9 +298,7 @@ export class FedcmHttpHandler extends HttpHandler {
     if (!accountId) {
       const error_msg = 'no account id find with the given cookie'
       this.logger.info(error_msg)
-      response.writeHead(400, { 'Content-Type': 'application/json' })
-      response.end(JSON.stringify({ 'error': error_msg }))
-      return
+      throw new BadRequestHttpError(error_msg)
     }
 
     if (!reqAccountId) {
@@ -331,17 +322,17 @@ export class FedcmHttpHandler extends HttpHandler {
     // TODO: SECURITY: is this enough checks ? 
     // does it have implication if a user alter a redirect_uri, or the origin of the request ? 
 
-    if (!allowed_uris){
+    if (!allowed_uris) {
       throw new InternalServerError("Client doesn't have redirectUris")
     }
-    if (!request.headers.origin){
+    if (!request.headers.origin) {
       throw new BadRequestHttpError("No origin found in the request's header")
     }
-    if (!allowed_uris){
+    if (!allowed_uris) {
       throw new InternalServerError("Client doesn't have redirectUris")
     }
 
-    if (!request.headers.origin){
+    if (!request.headers.origin) {
       throw new BadRequestHttpError("No origin found in the request's header")
     }
     // ----- PICK-WEBID -----
