@@ -6,89 +6,95 @@
   <link rel="icon" type="image/svg+xml" href="/solid.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    main {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    section {
+      max-width: 800px;
+      margin: 1em;
+    }
+  </style>
   <title>Simple Solid App Demo</title>
 </head>
 
 <body>
-  <main class="container" style="max-width: 600px">
-    <h1>Solid-oidc FedCM Demo</h1>
-    <article style="background-color: lightpink">
-      <p>
-        Make sure you use chromium based browsed ( version > 126 for chromium ) with the fedcm flag enable
-      </p>
-      <ul>
-        <li>Go to chrome://flags and enter "fedcm" to filter the flags</li>
-        <li>Enable "FedCM with IdP Registration support" and "FedCmMultiIdp"</li>
-      </ul>
-    </article>
-    <!--  Configuration -->
-    <p>optional steps ( click to spoil ) </p>
+  <main class="container">
     <section>
-      <details>
-        <summary>0.1 Configuration</summary>
+      <h1>Solid-OIDC FedCM Demo</h1>
+      <article style="background-color: lightpink">
         <p>
-          Unless you want to use this client demo with your own FedCM compatible CSS instance, leave the following as it
-          is, and use the CSS instance we provide.
+          Make sure you use a Chromium-based browser (version > 126 for Chromium) with the FedCM flag enabled
         </p>
-        <p>
-          This should be a CSS instance that support FedCM registrtion, with a `SameSite=None` cookie policy.
-          CSS URL:
-          <input id="cssurl" />
-        </p>
-    </section>
-
-    <!--- Registration -->
-    <section>
-      <details>
-        <summary>0.2 registration</summary>
-        <p>
-          You can skip this step by using the demo account:
         <ul>
-          <li>username: alice@example.org</li>
-          <li>password: alice</li>
+          <li>Go to chrome://flags and enter "fedcm" to filter the flags</li>
+          <li>Enable "FedCM with IdP Registration support" and "FedCmMultiIdp"</li>
         </ul>
-        </p>
-        <p>
-          If you don't already have one, please register an account <a id="registerlink">here</a>
-          After creating a account, add a Pod and a WebId, then Logout and Login again, and remember to click the
-          "Register IdP" button.
-        </p>
-      </details>
+      </article>
+      <!-- Used to pass the css url.  -->
+      <!-- Could be set manually by the user if they where multiple FedCM compatible CSS instance -->
+      <input style="visibility: hidden" id="cssurl" />
     </section>
-
     <!--Login -->
     <section>
-      <h2>1. Login</h2>
+
+      <h2>1. Log in to a Solid Server instance.</h2>
+      <p> FedCM requires you to have a logged-in session from an IdP,
+        in our case, a Solid server based on CSS.
+        If your IdP is FedCM-compatible, you should only log in, and everything
+        should be handled by the server.
+      </p>
       <p>
-        Make sure you're logged in the
-        <a id="accountlink">CSS instance</a>
-        with the demo account:
+        Currently, the only FedCM-compatible Solid server available is this demo <a id="accountlink">CSS instance</a>.
+        (The compatibility is provided by <a href="https://github.com/Liquid-Surf/fedcm-demo"> this add-on</a>
+        and by changing the cookie policy to <code>SameSite=None</code>, which also makes the server vulnerable,
+        so it should be used for testing purposes only. It should be resolved in the future. See <a
+          href="https://github.com/w3c-fedid/FedCM/issues/587">#587</a>).
+        <br />
+        First, you need to create an account <a id="registerlink">here</a>,
+        or just log in with the demo account:
       <ul>
-        <li>username: alice@example.org</li>
-        <li>password: alice</li>
+        <li>username: <code>alice@example.org</code></li>
+        <li>password: <code>alice</code></li>
       </ul>
-      <strong>Don't forget to click the "Register Idp" button before login</strong>
-      <br /><br />
-      (You can also register a custom account - see intruction in 0.2 )
+      <p>
+        When you log in to CSS <strong>don't forget to click the "Register IdP" button before logging in</strong>
+      </p>
+      <a id="loginlink">You can log in here</a>
+    </section>
+    <section>
+      <h2>2. Log in to your Solid Server from the Solid Application</h2>
+      <p> Now, if you try to fetch the resource below, you should receive an error:
+        This is because you are trying to access a container (<code>/profile</code>) that is private by
+        default.
+      </p>
+      <p>
+        So let's log in using FedCM to fetch the resource.
+      </p>
       <button id="startInruptLogin">Solid-OIDC Login With FedCM</button>
       </p>
-      <p style="background-color: green; color: white;" >
+      <p style="background-color: green; color: white;">
         <span id="loginstatus"></span>
       </p>
+      <p>We are now logged in. As you can see, FedCM has automatically found the Solid server we were logged into.</p>
+      <p>We also didn't have a redirection to our Solid server, nor a consent screen... pretty good UX!
+        Try to fetch the resource again to confirm you're logged in.</p>
       <p>
-      <details>
-        <summary>redirect url: </summary>
+        <!-- <details>
+        <summary>( click me edirect url: </summary>
         <input id="redirect_url" />
-      </details>
+      </details> -->
       </p>
     </section>
 
     <!--  Fetch Resource -->
     <section>
-      <h2>2. Fetch a Protected Resource</h2>
+      <h2>3. Fetch a Protected Resource</h2>
       <p>
-        <label for="resourceInput">Resource to view: ( the default profile folder is a protected resource, see if you
-          can view its content ) </label>
+        <label for="resourceInput">Resource to view: (the default profile folder is a protected resource, see if you
+          can view its contents) </label>
         <input type="text" id="resourceInput" placeholder="e.g. http://localhost:3000/alice/private/secret" />
         <button id="fetchResource">Fetch Resource</button>
       </p>

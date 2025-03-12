@@ -201,7 +201,7 @@ export class FedcmHttpHandler extends HttpHandler {
     const client = await provider.Client.find(client_id);
     if (!client) {
       // TODO
-      return ''
+      throw new InternalServerError("Couldn't found client.")
     }
 
     // 3. Ensure a grant exists for this client (create one if needed, to attach scopes)
@@ -337,7 +337,13 @@ export class FedcmHttpHandler extends HttpHandler {
     }
     // ----- PICK-WEBID -----
     const accountLinks = await this.webIdStore.findLinks(accountId)
-    const webId = accountLinks[0].webId || '' // TODO multi webId account
+
+    if ( !accountLinks || accountLinks.length < 1 )
+      throw new InternalServerError('No webId linked to this account.');
+    if ( accountLinks.length > 1)
+      throw new InternalServerError('Account should have one and only one WebID, found ' + accountLinks.length);
+
+    const webId = accountLinks[0].webId
 
     const code = await this.getCode(req, webId, provider)
 

@@ -1,6 +1,6 @@
 
 import { Session as InruptSession } from '@inrupt/solid-client-authn-browser';
-
+console.log(" ----  PAGE IS RELOADED ---- ")
 // Initialize Inrupt session
 const session = new InruptSession();
 
@@ -11,6 +11,7 @@ const resourceInput = document.getElementById('resourceInput');
 const cssUrlInput = document.getElementById('cssurl');
 const accountLink = document.getElementById('accountlink');
 const registerLink = document.getElementById('registerlink');
+const loginLink = document.getElementById('loginlink');
 const loginStatusDiv = document.getElementById('loginstatus');
 const redirectUrl = document.getElementById('redirect_url')
 const resourceContentDiv = document.getElementById('resourceContent');
@@ -24,6 +25,8 @@ cssUrlInput.value = CSS_URL;
 // TODO: fetch URL dynamically instead of hardcoded
 accountLink.href = `${CSS_URL}.account/`;
 registerLink.href = `${CSS_URL}.account/login/password/register/`;
+loginLink.href = `${CSS_URL}.account/login/password/`;
+
 
 
 
@@ -69,7 +72,6 @@ async function inruptLoginWithFedcm(cssUrl, session) {
   if (!session.info.isLoggedIn) {
     await session.login({
       oidcIssuer: cssUrl,
-      redirectUrl: window.location.href,
       clientName: "Solid Demo App",
       prompt: "consent",
       clientId,
@@ -82,9 +84,9 @@ async function inruptLoginWithFedcm(cssUrl, session) {
 
 
 /**
-      * Trigger FedCM login process using parameters from the redirect URL.
-      * @param {string} url - The redirect URL containing FedCM parameters, returned by CSS FedCMHandler
-      */
+ * Trigger FedCM login process using parameters from the redirect URL.
+ * @param {string} url - The redirect URL containing FedCM parameters, returned by CSS FedCMHandler
+ */
 const triggerFedcmLoginAndHandleResponse = async (url, provider_url) => {
   try {
     // parsing the params ( code_challenge, state etc.. ) from the URL 
@@ -96,7 +98,7 @@ const triggerFedcmLoginAndHandleResponse = async (url, provider_url) => {
 
     // Start FedCM login with the extracted parameters
     const fedcm_response = await navigatorApiCallWrapper(params);
-    const authorization_code = fedcm_response.token 
+    const authorization_code = fedcm_response.token
     console.log("Received token:", authorization_code);
 
     // Handle the incoming redirect with the returned token
