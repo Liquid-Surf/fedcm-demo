@@ -8,8 +8,8 @@ npm run start
 ```
 
 First you need to use a browser that supports FedCM, such as:
-* use Chrome >= 128, go to chrome://flags and enter "fedcm" to filter the flags
-* Enable "FedCM with IdP Registration support" and "FedCmMultiIdp"
+* use Chrome >= 145, go to chrome://flags and enter "fedcm" to filter the flags
+* Enable "FedCM with IdP Registration support" and "FedCmLightweightMode"
 
 ## On localhost
 
