@@ -72,7 +72,12 @@ export class FedcmHttpHandler extends HttpHandler {
 
     const providers = [`${this.baseUrl}.well-known/fedcm/fedcm.json`]
     response.writeHead(200, { 'Content-Type': 'application/json' })
-    response.end(JSON.stringify({ 'provider_urls': providers }))
+    response.end(JSON.stringify({
+      "provider_urls": providers,
+      // uncomment to enable "client_metadata_endpoint"
+      // "accounts_endpoint": `/.well-known/fedcm/accounts_endpoint`,
+      // "login_url": `/.account/login/password/`,
+    }))
   }
 
   private async handleFedcmJSON({ request, response }: HttpHandlerInput): Promise<void> {
@@ -81,9 +86,9 @@ export class FedcmHttpHandler extends HttpHandler {
 
     const config = {
       "accounts_endpoint": `/.well-known/fedcm/accounts_endpoint`,
-      "client_metadata_endpoint": `/.well-known/fedcm/client_metadata_endpoint`,
       "id_assertion_endpoint": `/.well-known/fedcm/token`,
       "disconnect_endpoint": `/.well-known/fedcm/disconnect`,
+      // "client_metadata_endpoint": `/.well-known/fedcm/client_metadata_endpoint`,
       "revocation_endpoint": `/.oidc/token/revocation`,
       "login_url": `/.account/login/password/`,
       "branding": {
@@ -95,7 +100,8 @@ export class FedcmHttpHandler extends HttpHandler {
             "url": `/.well-known/css/images/solid.png`,
             "size": 32
           }
-        ]
+        ],
+        "name": "Solid Server"
       }
     }
 
@@ -338,9 +344,9 @@ export class FedcmHttpHandler extends HttpHandler {
     // ----- PICK-WEBID -----
     const accountLinks = await this.webIdStore.findLinks(accountId)
 
-    if ( !accountLinks || accountLinks.length < 1 )
+    if (!accountLinks || accountLinks.length < 1)
       throw new InternalServerError('No webId linked to this account.');
-    if ( accountLinks.length > 1)
+    if (accountLinks.length > 1)
       throw new InternalServerError('Account should have one and only one WebID, found ' + accountLinks.length);
 
     const webId = accountLinks[0].webId
