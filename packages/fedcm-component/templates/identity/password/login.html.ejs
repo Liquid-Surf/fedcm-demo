@@ -51,7 +51,6 @@
       .addEventListener('click', async () => await registerIdp())
 
     let controls = await fetchControls('<%= idpIndex %>');
-    console.log('hello')
 
 
     // Only show the cancel button if there is an OIDC interaction
@@ -68,6 +67,23 @@
       if (json) {
         // Now with cookie
         controls = await fetchControls('<%= idpIndex %>');
+        // TODO: is there a better way to get account Id ?
+        const accountId = controls.html.account.account.replace(controls.account.create ,'').slice(0,-1) // slice to remove trailling slash
+        console.log('lets try to push the account now');
+        // TODO: get name, mail, picture.. do not hardcode them
+        try {
+          await navigator.login.setStatus("logged-in", {
+            accounts: [{
+                id: accountId,
+                name: "joe",
+                email: "a@a.a",
+                picture: "",
+            }]
+          })
+          console.log("Pushed account successfully")
+        } catch (error) {
+          console.log("Could not set login status to 'logged-in': ", error)
+        }
         location.href = controls.html.account.account;
       }
     });
