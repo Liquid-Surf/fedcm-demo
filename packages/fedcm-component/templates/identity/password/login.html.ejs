@@ -20,7 +20,7 @@
   </fieldset>
 
   <p class="actions">
-    <button type="button" id="fedcm-registration" onClick="registerIdp" >Register IdP to FedCM </button>
+    <button type="button" id="fedcm-registration" onClick="registerIdp" style="visibility:hidden;">Register IdP to FedCM </button>
     <button type="submit" name="submit" disabled>Log in</button>
     <button class="hidden" type="button" id="cancel">Cancel</button>
   </p>
@@ -47,10 +47,22 @@
 
   (async() => {
 
+    let isFedcmWithIdpRegistrationEnabled = false
+    try {
+      if (IdentityProvider && IdentityProvider.register) // if the browser allows FedCM idp registration
+        isFedcmWithIdpRegistrationEnabled = true;
+    }catch(error){
+      console.log("If you are trying to use FedCM, be sure to run chrome canary > 145 with the correct flags enabled, see https://github.com/Liquid-Surf/fedcm-demo/")
+    }
+    
+    if (isFedcmWithIdpRegistrationEnabled) 
+      document.getElementById("fedcm-registration").style.visibility = "visible"
+
     document.getElementById('fedcm-registration')
       .addEventListener('click', async () => await registerIdp())
 
     let controls = await fetchControls('<%= idpIndex %>');
+
 
 
     // Only show the cancel button if there is an OIDC interaction
@@ -64,29 +76,33 @@
       const json = await postJsonForm(controls.password.login, false,
         (json) => Object.assign(json, { remember: Boolean(json.remember) }));
       // In case there was no forced OIDC redirect, just go to the main account page
-      if (json) {
+      if (json) { // ( <- this mean loggin is successful )
         // Now with cookie
         controls = await fetchControls('<%= idpIndex %>');
-        // TODO: is there a better way to get account Id ?
-        const id = controls.html.account.account.replace(controls.account.create ,'').slice(0,-1) // slice to remove trailling slash
-        const name = await getAccountName(controls)
-        const email = await getAccountEmail(controls)
-        console.log('lets try to push the account now');
-        console.log(controls)
-        // TODO get picture from webid ?
-        try {
-          await navigator.login.setStatus("logged-in", {
-            accounts: [{
-                id,
-                name,
-                email,
-                picture: "", 
-            }]
-          })
-          console.log("Pushed account successfully")
-        } catch (error) {
-          console.log("Could not set login status to 'logged-in': ", error)
+
+        if(isFedcmWithIdpRegistrationEnabled){
+          // TODO: is there a better way to get account Id ?
+          const id = controls.html.account.account.replace(controls.account.create ,'').slice(0,-1) // slice to remove trailling slash
+          const name = await getAccountName(controls)
+          const email = await getAccountEmail(controls)
+          console.log('lets try to push the account now');
+          console.log(controls)
+          // TODO get picture from webid ?
+          try {
+            await navigator.login.setStatus("logged-in", {
+              accounts: [{
+                  id,
+                  name,
+                  email,
+                  picture: "", 
+              }]
+            })
+            console.log("Pushed account successfully")
+          } catch (error) {
+            console.log("Could not set login status to 'logged-in': ", error)
+          }
         }
+
         location.href = controls.html.account.account;
       }
     });
