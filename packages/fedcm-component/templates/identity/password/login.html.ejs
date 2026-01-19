@@ -68,16 +68,19 @@
         // Now with cookie
         controls = await fetchControls('<%= idpIndex %>');
         // TODO: is there a better way to get account Id ?
-        const accountId = controls.html.account.account.replace(controls.account.create ,'').slice(0,-1) // slice to remove trailling slash
+        const id = controls.html.account.account.replace(controls.account.create ,'').slice(0,-1) // slice to remove trailling slash
+        const name = await getAccountName(controls)
+        const email = await getAccountEmail(controls)
         console.log('lets try to push the account now');
-        // TODO: get name, mail, picture.. do not hardcode them
+        console.log(controls)
+        // TODO get picture from webid ?
         try {
           await navigator.login.setStatus("logged-in", {
             accounts: [{
-                id: accountId,
-                name: "joe",
-                email: "a@a.a",
-                picture: "",
+                id,
+                name,
+                email,
+                picture: "", 
             }]
           })
           console.log("Pushed account successfully")
@@ -87,6 +90,21 @@
         location.href = controls.html.account.account;
       }
     });
+
+    const getAccountEmail = async (controls) => {
+      const { passwordLogins } = await fetchJson(controls.password.create)
+      return Object.entries(passwordLogins)[0][0] // TODO: unsafely assuming one email per account
+    }
+
+    const getAccountName = async (controls) => {
+      // let's assume the name is the Pod name
+      // TODO: fetch name from webId if possible
+      const { pods } = await fetchJson(controls.account.pod)
+      return Object.entries(pods)[0][0] // TODO: unsafely assuming one Pod per account
+        .replace(document.location.origin, '')
+        .replaceAll('/','')
+
+    }
 
     updateElement('register-link', controls.html.password.register, { href: true });
     updateElement('forgot-link', controls.html.password.forgot, { href: true });
