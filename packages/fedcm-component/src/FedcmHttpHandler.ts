@@ -2,12 +2,23 @@ import { BadRequestHttpError, HttpRequest, InternalServerError } from '@solid/co
 import { CookieStore } from '@solid/community-server';
 import { ProviderFactory } from '@solid/community-server';
 import { HttpHandler } from '@solid/community-server';
-import type { HttpHandlerInput } from '@solid/community-server';
+import type { HttpHandlerInput, HttpResponse } from '@solid/community-server';
 import { WebIdStore } from '@solid/community-server';
 import { getLoggerFor } from '@solid/community-server';
 import { parse } from 'cookie'
 import { readableToString } from '@solid/community-server';
 import Provider from '@solid/community-server/templates/types/oidc-provider';
+
+/** TODO
+ * We are currently extending HttpHandler, but it feels that the proper CSS way
+ * would be to use HttpHandlerOperation instead, in odrder for example to get
+ * the correct error handling pipline ( and be able to use `throw new BadRequestError`
+ * instead of writting the response manually.
+ * 
+ */
+
+
+
 
 /**
  * HTTP handler that handle all FedCM requests.
@@ -41,8 +52,7 @@ export class FedcmHttpHandler extends HttpHandler {
   public async handle({ request, response }: HttpHandlerInput): Promise<void> {
 
     if (request.headers['sec-fetch-dest'] !== 'webidentity') {
-      throw new BadRequestHttpError('Missing or incorrect Sec-Fetch-Dest header');
-      return;
+      this.BadRequestHttpError('Missing or incorrect Sec-Fetch-Dest header', response);
     }
 
     if (request.url?.startsWith('/.well-known/web-identity')) {
@@ -65,6 +75,18 @@ export class FedcmHttpHandler extends HttpHandler {
 
   }
 
+  // Handy function until proper refactoring, see the TODO on top of this file
+  private BadRequestHttpError(error_msg: string, response: HttpResponse){
+    this.logger.info(error_msg)
+    response.writeHead(400, { 'Content-Type': 'application/json' })
+    response.end(JSON.stringify({ 'error': error_msg }))
+  }
+  private  InternalServerError(error_msg: string, response: HttpResponse){
+    this.logger.info(error_msg)
+    response.writeHead(500, { 'Content-Type': 'application/json' })
+    response.end(JSON.stringify({ 'error': error_msg }))
+  }
+  
   private removeLastTraillingSlash(url: string): string { return url.slice(-1) == '/' ? url.slice(0, -1) : url }
   private async handleWebIdentity({ request, response }: HttpHandlerInput): Promise<void> {
     // 3.1
@@ -133,17 +155,19 @@ export class FedcmHttpHandler extends HttpHandler {
 
     if (!accountId) {
       // TODO Does this necessary mean the user is not signed in ? 
-      throw new BadRequestHttpError(`Could not find an account matching the given cookie (${cssAccountCookie}).`);
+      this.BadRequestHttpError(`Could not find an account matching the given cookie (${cssAccountCookie}).`, response);
+      return
     }
 
 
     const accountLinks = await this.webIdStore.findLinks(accountId)
 
     if (!accountLinks || accountLinks.length < 1 || !accountLinks[0].webId) {
-      throw new InternalServerError("No account linked to this accountId. Does this account have a webId?")
+      this.InternalServerError("No account linked to this accountId. Does this account have a webId?", response)
+      return
     }
     if (accountLinks.length > 1) {
-      throw new InternalServerError("With the current implementation, your CSS account should have one and only one WebId")
+      this.InternalServerError("With the current implementation, your CSS account should have one and only one WebId", response)
     }
 
     const webId = accountLinks[0].webId
@@ -206,7 +230,7 @@ export class FedcmHttpHandler extends HttpHandler {
     // 2. Determine the client (e.g., if client_id is known for this FedCM context)
     const client = await provider.Client.find(client_id);
     if (!client) {
-      // TODO
+      // TODO: handle error properly
       throw new InternalServerError("Couldn't found client.")
     }
 
@@ -279,13 +303,13 @@ export class FedcmHttpHandler extends HttpHandler {
     const provider = await this.providerFactory.getProvider()
 
     if (!params.state) {
-      throw new BadRequestHttpError("missing `state` value from params.")
+      this.BadRequestHttpError("missing `state` value from params.", response)
     }
 
     if (!client_id) {
       const error_msg = 'client_id missing from the request\'s body.'
       this.logger.info(error_msg)
-      throw new BadRequestHttpError(error_msg)
+      this.BadRequestHttpError(error_msg, response)
     }
 
     const cookies = parse(request.headers.cookie || '')
@@ -293,7 +317,7 @@ export class FedcmHttpHandler extends HttpHandler {
     if (!('css-account' in cookies)) {
       const error_msg = 'No CSS cookie found in the request header.'
       this.logger.info(error_msg)
-      throw new BadRequestHttpError(error_msg)
+      this.BadRequestHttpError(error_msg, response)
     }
 
     const cssAccountCookie = cookies['css-account']
@@ -304,7 +328,7 @@ export class FedcmHttpHandler extends HttpHandler {
     if (!accountId) {
       const error_msg = 'no account id find with the given cookie'
       this.logger.info(error_msg)
-      throw new BadRequestHttpError(error_msg)
+      this.BadRequestHttpError(error_msg, response)
     }
 
     if (!reqAccountId) {
@@ -332,14 +356,14 @@ export class FedcmHttpHandler extends HttpHandler {
       throw new InternalServerError("Client doesn't have redirectUris")
     }
     if (!request.headers.origin) {
-      throw new BadRequestHttpError("No origin found in the request's header")
+      this.BadRequestHttpError("No origin found in the request's header", response)
     }
     if (!allowed_uris) {
       throw new InternalServerError("Client doesn't have redirectUris")
     }
 
     if (!request.headers.origin) {
-      throw new BadRequestHttpError("No origin found in the request's header")
+      this.BadRequestHttpError("No origin found in the request's header", response)
     }
     // ----- PICK-WEBID -----
     const accountLinks = await this.webIdStore.findLinks(accountId)
