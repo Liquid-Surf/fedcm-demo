@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/solid.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/pico.min.css">
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--pico-muted-border-color);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    #user_header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    #user_header span {
+      color: var(--pico-muted-color);
+    }
+
+    #disconnectButton {
+      margin: 0;
+      padding: 0.5rem 1rem;
+    }
+
+    main {
+      flex: 1;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 2rem;
+      width: 100%;
+    }
+
+    #login_page {
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+
+    .todo-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .todo-list li {
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--pico-muted-border-color);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .todo-list li:last-child {
+      border-bottom: none;
+    }
+
+    .todo-list .done {
+      color: var(--pico-muted-color);
+      text-decoration: line-through;
+    }
+
+    .checkbox {
+      width: 1.2rem;
+      height: 1.2rem;
+      border: 2px solid var(--pico-primary);
+      border-radius: 0.6rem;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .checkbox.checked {
+      background: var(--pico-primary);
+    }
+
+    footer {
+      text-align: center;
+      padding: 1rem;
+      color: var(--pico-muted-color);
+      font-size: 0.875rem;
+    }
+
+    footer a {
+      margin-left: 1rem;
+    }
+  </style>
+  <title>Todo App</title>
+</head>
+
+<body>
+  <header>
+    <h1>Todo App</h1>
+    <div id="user_header" style="visibility: hidden">
+      <span>Welcome, Alice</span>
+      <button id="disconnectButton">Disconnect</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="login_page">
+      <p>Sign in to access your tasks</p>
+      <button id="startInruptLogin">Sign in</button>
+    </section>
+
+    <section id="logged_page" style="visibility: hidden">
+      <h2>My Tasks</h2>
+      <ul class="todo-list">
+        <li><span class="checkbox"></span> Buy some bread</li>
+        <li><span class="checkbox"></span> Call Bob</li>
+        <li class="done"><span class="checkbox checked"></span> Fix something</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    Todo App 2026 <a id="login_link">IdP Settings</a>
+  </footer>
+
+  <script type="module" src="/src/solid.js"></script>
+</body>
+
+</html>
