@@ -18,6 +18,7 @@ const handleFedcmRedirect = async (redirectUrl, providerUrl, session) => {
         configURL: 'any',
         clientId: params.client_id,
         registered: true,
+				// those params are required as Solid-OIDC use PKCE flow
         params: {
           code_challenge: params.code_challenge,
           code_challenge_method: params.code_challenge_method,
