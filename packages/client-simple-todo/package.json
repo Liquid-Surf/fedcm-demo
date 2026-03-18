@@ -11,6 +11,7 @@
     "start:mitm": "echo \"PLEASE START THE MITMPROXY WITH 'mitmproxy --mode reverse:http://localhost:6081 -p 6010 --set keep_host_header=true'\"; PORT=6011 npm run dev"
   },
   "dependencies": {
+    "@inrupt/solid-client": "^2.0.0",
     "@inrupt/solid-client-authn-browser": "^1.17.5",
     "express": "^4.18.2"
   },
