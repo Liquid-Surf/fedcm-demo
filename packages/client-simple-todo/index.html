@@ -114,8 +114,9 @@
       margin: 0;
     }
 
-    .add-todo-form button {
+    .add-todo-form button[type=submit] {
       margin: 0;
+      width: auto;
       white-space: nowrap;
     }
 
@@ -132,6 +133,14 @@
       border-radius: 0.25rem;
       margin-bottom: 1rem;
     }
+
+    .doc {
+      text-align: left;
+      margin-top: 5rem;
+      font-size: small;
+    }
+
+
 
     footer {
       text-align: center;
@@ -160,6 +169,24 @@
     <section id="login_page">
       <p>Sign in to access your tasks</p>
       <button id="startInruptLogin">Sign in</button>
+      <br><br>
+      <div class="doc">
+        <p>This page is a simple Solid Todo app ment to demonstrate FedCM login.</p>
+        <p>To make it work, you need:</p>
+        <ol>
+
+          <li>Use chrome/chromium version > 145</li>
+          <li>Go to <strong>chrome://flags</strong> and enable the following flags:
+            <ul>
+              <li><strong>chrome://flags/#fedcm-idp-registration</strong></li>
+              <li><strong>chrome://flags/#fedcm-lightweight-mode</strong></li>
+            </ul>
+          </li>
+          <li> Then go to <a id="login_link">the FedCM compatible IdP</a> and login using the account "alice@example.org" with the password "alice".</li>
+          <li> Finally go back to the Todo App and click the Sign In button, the FedCM login prompt should appear</li>
+        </ol>
+      </div>
+
     </section>
 
     <section id="logged_page" style="visibility: hidden">
@@ -175,7 +202,7 @@
   </main>
 
   <footer>
-    Todo App 2026 <a id="login_link">IdP Settings</a>
+    Todo App 2026 
   </footer>
 
   <script type="module" src="/src/solid.js"></script>
